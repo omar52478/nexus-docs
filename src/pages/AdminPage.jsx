@@ -232,7 +232,7 @@ export default function AdminPage() {
   const handlePreview = () => {
     if (!formData) return;
     localStorage.setItem(`nexus-cms-${formData.id}`, JSON.stringify(formData));
-    window.location.href = `/docs/${selectedPage}?preview=true`;
+    window.open(`/docs/${selectedPage}?preview=true`, '_blank');
   };
 
   const handleSave = () => {
