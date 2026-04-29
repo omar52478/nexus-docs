@@ -356,7 +356,7 @@ export default function AdminPage() {
           </div>
           <div className="cms-topbar-actions">
             {hasChanges && <span style={{ fontSize: 12, color: '#38bdf8', fontWeight: 600, paddingRight: 10 }}>● Unsaved Changes</span>}
-            <button className="cms-btn cms-btn-secondary" onClick={() => window.open(`/docs/${selectedPage}`, '_blank')}><FiIcons.FiExternalLink /> Preview</button>
+            <button className="cms-btn cms-btn-secondary" onClick={() => window.open(`${window.location.origin}/docs/${selectedPage}?preview=true`, '_blank')}><FiIcons.FiExternalLink /> Preview</button>
             <button className="cms-btn cms-btn-primary" onClick={handleSave} disabled={!hasChanges} style={{ opacity: hasChanges ? 1 : 0.5 }}><FiIcons.FiSave /> Publish</button>
           </div>
         </header>

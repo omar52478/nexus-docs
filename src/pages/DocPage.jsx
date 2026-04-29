@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Navigate, Link } from 'react-router-dom';
+import { useParams, Navigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaCopy, FaCircleCheck, FaTriangleExclamation, FaCircleInfo, FaCircleExclamation, FaArrowLeft, FaArrowRight } from 'react-icons/fa6';
 import * as FiIcons from 'react-icons/fi';
@@ -33,6 +33,7 @@ const itemVariants = {
 
 export default function DocPage() {
   const { id } = useParams();
+  const location = useLocation();
   const { setCurrentSections } = useDoc();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,19 @@ export default function DocPage() {
     setLoading(true);
     setError(false);
     
+    const isPreview = new URLSearchParams(location.search).get('preview') === 'true';
+    
+    if (isPreview) {
+      const cmsData = localStorage.getItem('nexus-cms-' + id);
+      if (cmsData) {
+        const parsed = JSON.parse(cmsData);
+        setData(parsed);
+        setCurrentSections(parsed.sections || []);
+        setLoading(false);
+        return;
+      }
+    }
+
     fetch(`/pages/${id}.json`)
       .then(res => {
         if (!res.ok) throw new Error('Not found');
@@ -76,7 +90,7 @@ export default function DocPage() {
     window.scrollTo(0, 0);
 
     return () => setCurrentSections([]);
-  }, [id, setCurrentSections]);
+  }, [id, setCurrentSections, location.search]);
 
   const copyToClipboard = (text, idx) => {
     navigator.clipboard.writeText(text);
