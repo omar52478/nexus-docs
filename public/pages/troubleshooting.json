@@ -1,0 +1,281 @@
+{
+  "id": "troubleshooting",
+  "title": "Troubleshooting",
+  "icon": "🔧",
+  "faIcon": "fa-solid fa-wrench",
+  "sections": [
+    {
+      "heading": "Troubleshooting Overview",
+      "content": "This guide covers the most common issues encountered when setting up and running NEXUS. Issues are grouped by subsystem: camera, hardware, AI model, calibration, and application."
+    },
+    {
+      "heading": "Quick Diagnostic Checklist",
+      "content": "Before diving into specific issues, run through this checklist:",
+      "list": [
+        "✅ NVIDIA driver installed and <code>nvcc --version</code> returns a version",
+        "✅ TensorRT installed and in system PATH",
+        "✅ CH340 driver installed — ESP32 appears in Device Manager → Ports (COM & LPT)",
+        "✅ Camera indices correct — tested in Settings tab",
+        "✅ No other program using the COM port (Arduino IDE, PuTTY, another NEXUS instance)",
+        "✅ <code>settings.json</code> exists and is valid JSON — delete it to regenerate defaults",
+        "✅ Model file exists at the path in <code>MODEL_PATH</code> config key"
+      ]
+    },
+    {
+      "heading": "Camera Not Detected",
+      "type": "alert",
+      "alertType": "warning",
+      "alertContent": "Cameras must be plugged in BEFORE launching NEXUS. Hot-plugging after launch is not supported — restart the application after connecting cameras."
+    },
+    {
+      "heading": "Camera Not Detected — Solutions",
+      "list": [
+        "<strong>Wrong index:</strong> Go to Settings → try CAM_L_IDX and CAM_R_IDX values 0, 1, 2, 3, 4 until both feeds appear in the DASHBOARD video widget",
+        "<strong>Both cameras same index:</strong> Ensure CAM_L_IDX ≠ CAM_R_IDX. If both show the same feed, one index is wrong",
+        "<strong>USB bandwidth:</strong> Avoid plugging both cameras into the same USB hub or the same controller — use separate physical USB ports on the motherboard",
+        "<strong>Resolution conflict:</strong> Lower RESOLUTION to [640, 480] in Settings to test — some webcams don't support 1280×720 at index detection time",
+        "<strong>OpenCV test:</strong> Run <code>python -c \"import cv2; cap=cv2.VideoCapture(1); print(cap.read()[0])\"</code> to verify index 1 opens"
+      ]
+    },
+    {
+      "heading": "Camera Feed Diagnostic Code",
+      "type": "code",
+      "language": "python",
+      "code": "import cv2\n\n# Scan all camera indices 0-8\nfor i in range(9):\n    cap = cv2.VideoCapture(i)\n    if cap.isOpened():\n        ret, frame = cap.read()\n        print(f\"Index {i}: {'✅ OK' if ret else '❌ Open but no frame'} — {frame.shape if ret else 'N/A'}\")\n        cap.release()\n    else:\n        print(f\"Index {i}: ❌ Not available\")\n\n# Expected output for correct setup:\n# Index 1: ✅ OK — (720, 1280, 3)   ← Left camera\n# Index 4: ✅ OK — (720, 1280, 3)   ← Right camera"
+    },
+    {
+      "heading": "Hardware / ESP32 Not Connecting",
+      "list": [
+        "<strong>Wrong COM port:</strong> Open Device Manager → Ports (COM & LPT) → find 'USB-SERIAL CH340 (COMx)' — use that exact port in Settings",
+        "<strong>CH340 driver missing:</strong> If the ESP32 doesn't appear in Device Manager, download the driver from WCH: <code>wch-ic.com/downloads/CH341SER_ZIP.html</code>",
+        "<strong>Port in use:</strong> Close Arduino IDE Serial Monitor, PuTTY, or any terminal connected to the COM port. Only one application can own a COM port at a time",
+        "<strong>Charge-only USB cable:</strong> Some USB cables have data lines disconnected. Try a different cable — preferably one that came with a data-capable device",
+        "<strong>ESP32 not flashed:</strong> If the COM port exists but NEXUS can't communicate, reflash the firmware with <code>nexus_guardian_v2.2.ino</code> via Arduino IDE",
+        "<strong>Baud rate mismatch:</strong> Settings → BAUD_RATE must be 115200. If the ESP32 firmware was modified to use a different baud, update Settings accordingly"
+      ]
+    },
+    {
+      "heading": "Hardware Serial Test",
+      "type": "code",
+      "language": "python",
+      "code": "import serial, time\n\n# Test raw serial communication with ESP32\ntry:\n    ser = serial.Serial('COM8', 115200, timeout=3)  # Change COM8 to your port\n    time.sleep(2)  # Wait for ESP32 to reboot after port open\n    \n    # Read heartbeat\n    line = ser.readline().decode().strip()\n    print(f\"ESP32 says: {line}\")\n    # Expected: HB:90.0,150.0,0\n    \n    # Send a test command\n    ser.write(b'P90.0T150.0L0\\n')\n    resp = ser.readline().decode().strip()\n    print(f\"ACK: {resp}\")\n    # Expected: ACK:90.0,150.0\n    \n    ser.close()\n    print(\"✅ ESP32 communication working\")\nexcept serial.SerialException as e:\n    print(f\"❌ Serial error: {e}\")"
+    },
+    {
+      "heading": "Model Loading Fails (AI Engine Not Found)",
+      "list": [
+        "<strong>File not found:</strong> Check that the model file exists at <code>models/yolo11x-pose.engine</code> (or whichever path is in MODEL_PATH). The path is relative to the project root.",
+        "<strong>Wrong GPU (.engine files):</strong> TensorRT engine files are GPU-specific. An engine built on an RTX 3080 cannot run on an RTX 4090. Rebuild the engine on the current machine.",
+        "<strong>TensorRT not installed:</strong> If you see TensorRT-related import errors, ensure TensorRT is installed and its <code>lib/</code> folder is in your system PATH.",
+        "<strong>Use .pt as fallback:</strong> If you cannot build a .engine, set MODEL_PATH to the <code>.pt</code> file (e.g., <code>models/yolo11x-pose.pt</code>). It is 5–10× slower but portable.",
+        "<strong>VRAM insufficient:</strong> yolo11x-pose requires ~600 MB VRAM. On low-VRAM GPUs, switch to yolo11s-pose (~220 MB) or yolo11n-pose (~120 MB)."
+      ]
+    },
+    {
+      "heading": "Rebuild TensorRT Engine",
+      "type": "code",
+      "language": "python",
+      "code": "from ultralytics import YOLO\n\n# Rebuild engine for THIS machine's GPU (must have TensorRT installed)\nmodel = YOLO('models/yolo11x-pose.pt')  # Start from .pt weights\n\n# FP16 (recommended — faster, slightly less accurate)\nmodel.export(format='engine', device=0, half=True)\n# Output: models/yolo11x-pose.engine\n\n# FP32 (slower but maximum precision)\nmodel.export(format='engine', device=0, half=False)\n\n# After export, update settings:\nfrom config import CONFIG, save_config\nCONFIG['MODEL_PATH'] = 'models/yolo11x-pose.engine'\nsave_config(CONFIG)"
+    },
+    {
+      "heading": "Low FPS / High Latency",
+      "list": [
+        "<strong>Using .pt instead of .engine:</strong> TensorRT engines are 5–10× faster. Build the .engine for your GPU (see above). This is the most common cause of low FPS.",
+        "<strong>Resolution too high:</strong> Lower RESOLUTION from [1280, 720] to [640, 480] in Settings for a significant speed boost.",
+        "<strong>Switch to lighter model:</strong> Use <code>yolo11m-pose</code> (~25 FPS) or <code>yolo11s-pose</code> (~40 FPS) instead of <code>yolo11x-pose</code> (~15 FPS).",
+        "<strong>GPU memory pressure:</strong> Close other GPU-intensive applications (games, other ML models, browsers with hardware acceleration).",
+        "<strong>CPU bottleneck:</strong> Camera capture runs on CPU. Ensure USB cameras are connected to USB 3.0 ports for lower capture latency.",
+        "<strong>Check latency source:</strong> If LATENCY > 100ms but FPS is normal, the bottleneck may be camera capture, not inference."
+      ]
+    },
+    {
+      "heading": "Performance Benchmarks by Model",
+      "type": "table",
+      "headers": [
+        "Model",
+        "Format",
+        "Est. FPS (RTX 3080)",
+        "VRAM",
+        "Recommended For"
+      ],
+      "rows": [
+        [
+          "yolo11x-pose",
+          ".engine (FP16)",
+          "~15 FPS",
+          "~600 MB",
+          "Maximum accuracy, fast GPU"
+        ],
+        [
+          "yolo11m-pose",
+          ".engine (FP16)",
+          "~25 FPS",
+          "~380 MB",
+          "Balanced — recommended default"
+        ],
+        [
+          "yolo11s-pose",
+          ".engine (FP16)",
+          "~40 FPS",
+          "~220 MB",
+          "Fast tracking, budget GPU"
+        ],
+        [
+          "yolo11n-pose",
+          ".engine (FP16)",
+          "~60 FPS",
+          "~120 MB",
+          "Maximum speed, low-end GPU"
+        ],
+        [
+          "yolo11x-pose",
+          ".pt (CPU fallback)",
+          "~2–5 FPS",
+          "N/A",
+          "No GPU available — very slow"
+        ]
+      ]
+    },
+    {
+      "heading": "Laser Not Firing",
+      "list": [
+        "<strong>Toggle is OFF:</strong> Dashboard → Check the LASER button — it must show '🟢 LASER ON' (red background) to be active.",
+        "<strong>Hardware not connected:</strong> The laser won't fire if ESP32 is disconnected. Check the HW status indicator — it must show 'HW: LINKED'.",
+        "<strong>Wrong firmware:</strong> Ensure the ESP32 is flashed with <code>nexus_guardian_v2.2.ino</code>. Older firmware versions may not support the laser pin.",
+        "<strong>GPIO wiring:</strong> Laser module must be wired to ESP32 GPIO 14. Verify the connection with a multimeter (should read 3.3V when laser state = 1).",
+        "<strong>Laser module power:</strong> The 5mW laser module requires 3.0–5.0V. Powering from 3.3V is borderline — try 5V if the dot is very faint or inconsistent."
+      ]
+    },
+    {
+      "heading": "Servo Jitter or Weak Movement",
+      "list": [
+        "<strong>Insufficient power supply:</strong> The most common cause. MG996R servos draw up to 2.5A at stall. Do NOT power servos from the ESP32 5V pin — use an external 5V 3A supply.",
+        "<strong>Shared ground missing:</strong> If servos run on external power, the GND of the external supply MUST be connected to ESP32 GND.",
+        "<strong>High AIM_SMOOTHNESS:</strong> If servos lag behind the target, reduce AIM_SMOOTHNESS in Dashboard. If they jitter, increase it.",
+        "<strong>Rate limit too aggressive:</strong> The ESP32 firmware enforces a 15ms minimum between commands. NEXUS respects this, but if modified, commands may be dropped.",
+        "<strong>PWM interference:</strong> Keep servo signal wires away from USB cables and power lines to reduce electrical interference."
+      ]
+    },
+    {
+      "heading": "Depth Estimation Not Working (Always 0.0m)",
+      "list": [
+        "<strong>No stereo calibration:</strong> Depth estimation requires a valid stereo calibration file. Check Settings → STEREO_FILE points to an existing .npz.",
+        "<strong>Calibration mode shows UNCALIBRATED:</strong> Dashboard → VISION MODE indicator shows the calibration state. If it says '⚠️ UNCALIBRATED RAW', run stereo calibration first.",
+        "<strong>Right camera not working:</strong> Depth uses both cameras. If CAM_R_IDX is wrong or the right camera is disconnected, disparity cannot be computed.",
+        "<strong>Target too close or too far:</strong> Reliable depth range is 0.5–5m for a 6–12cm baseline. Outside this range, disparity becomes too small or too large.",
+        "<strong>Low disparity:</strong> If both cameras are very close together (< 4cm baseline), disparity will be small and depth accuracy will be poor."
+      ]
+    },
+    {
+      "heading": "Stereo Calibration High RMS Error (> 1.0 px)",
+      "list": [
+        "<strong>Blurry images:</strong> Ensure cameras are in focus before capturing calibration pairs. A blurry chessboard produces inaccurate corner detection.",
+        "<strong>Board not flat:</strong> A warped or bent chessboard is the single most common cause of high RMS. Use a rigid backing (foam board, glass, hardback book).",
+        "<strong>Insufficient image variety:</strong> Capture at multiple angles (20–45° tilt), multiple distances (0.5m to 2m), and all corners of the frame.",
+        "<strong>Glare on board:</strong> Specular highlights on glossy paper cause false corner detections. Use matte paper or avoid direct lighting on the board.",
+        "<strong>Board moving during capture:</strong> Both cameras capture simultaneously — the board must be completely still at capture moment.",
+        "<strong>Too few image pairs:</strong> Use at least 20 pairs. 30–40 pairs from varied positions typically gives the best results."
+      ]
+    },
+    {
+      "heading": "Laser Alignment Misses Target",
+      "list": [
+        "<strong>Not enough calibration points:</strong> Use at least 12 points. Fewer points make the homography numerically unstable.",
+        "<strong>Poor coverage:</strong> Points clustered in the center produce large errors at the edges. Always include points near all four corners of the frame.",
+        "<strong>Cameras moved after calibration:</strong> Any physical movement of the camera-to-laser mount invalidates the homography. Redo alignment.",
+        "<strong>Use Trim for small corrections:</strong> Dashboard → Pan Trim / Tilt Trim sliders can correct small systematic offsets (±18°) without full recalibration.",
+        "<strong>Large systematic error:</strong> If the laser is consistently off by more than 5°, Trim sliders won't fully correct it. Redo laser alignment with better coverage."
+      ]
+    },
+    {
+      "heading": "settings.json Corrupted or Missing",
+      "content": "If the application won't start due to a JSON parse error or missing config keys, delete <code>settings.json</code> and restart. NEXUS will regenerate it with safe default values automatically.",
+      "type": "code",
+      "language": "bash",
+      "code": "# Option 1: Delete via command line\ndel settings.json          # Windows CMD\nrm settings.json           # PowerShell / Linux\npython main.py             # Restart — auto-regenerates settings.json\n\n# Option 2: Reset specific keys via Python\nfrom config import CONFIG, save_config\nCONFIG['CAM_L_IDX'] = 0\nCONFIG['CAM_R_IDX'] = 1\nCONFIG['SERIAL_PORT'] = 'COM3'\nsave_config(CONFIG)"
+    },
+    {
+      "heading": "MATLAB Tab Shows Error",
+      "type": "alert",
+      "alertType": "info",
+      "alertContent": "The MATLAB Engine tab error is EXPECTED if MATLAB is not installed on your machine. It is an optional feature. All calibration can be performed via the PY CALIBRATION tab. To enable MATLAB integration: install MATLAB with the Computer Vision Toolbox, then run <code>pip install matlabengine</code> — the version must exactly match your MATLAB installation (e.g., <code>pip install matlabengine==24.2.1</code> for MATLAB R2024b)."
+    },
+    {
+      "heading": "Application Crashes on Start",
+      "list": [
+        "<strong>Missing Python packages:</strong> Run <code>pip install PyQt6 opencv-python numpy ultralytics pyserial scipy torch torchvision</code>",
+        "<strong>Python version mismatch:</strong> NEXUS requires Python 3.10. Check with <code>python --version</code>.",
+        "<strong>DLL load failure (Windows):</strong> Install Visual C++ Redistributable (both x64 and x86) from Microsoft's website.",
+        "<strong>CUDA not found:</strong> Ensure CUDA Toolkit is installed and <code>nvcc --version</code> works. Add CUDA bin folder to PATH if needed.",
+        "<strong>Check the log:</strong> Run <code>python main.py</code> from a terminal to see the full error traceback — the GUI may hide it."
+      ]
+    },
+    {
+      "heading": "Logs Tab for Diagnostics",
+      "content": "The LOGS / DEBUG tab streams all INFO, WARNING, and ERROR events from every subsystem. It is the first place to check when something isn't working as expected.",
+      "type": "code",
+      "language": "python",
+      "code": "# NEXUS uses Python's standard logging module internally\n# Log levels emitted to the Logs tab:\n#\n# [INFO]    Engine started, model loaded, calibration loaded\n# [WARNING] Hardware disconnected, low confidence, high RMS\n# [ERROR]   Camera failed to open, model not found, serial error\n#\n# To save logs to file (useful for bug reports):\nimport logging\nlogging.basicConfig(\n    filename='nexus_debug.log',\n    level=logging.DEBUG,\n    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'\n)\n# Run python main.py — all logs will also be written to nexus_debug.log"
+    },
+    {
+      "heading": "Error Code Reference",
+      "type": "table",
+      "headers": [
+        "Error Message",
+        "Subsystem",
+        "Cause",
+        "Fix"
+      ],
+      "rows": [
+        [
+          "AI Engine Not Found",
+          "VisionEngine",
+          "MODEL_PATH file missing",
+          "Check models/ folder, rebuild .engine"
+        ],
+        [
+          "Camera index X failed to open",
+          "VisionEngine",
+          "Wrong CAM_L_IDX or CAM_R_IDX",
+          "Try indices 0–4 in Settings"
+        ],
+        [
+          "Serial port COMx: PermissionError",
+          "TacticalSerial",
+          "Port in use by another app",
+          "Close Arduino IDE / PuTTY"
+        ],
+        [
+          "Serial port COMx: FileNotFoundError",
+          "TacticalSerial",
+          "Wrong port or driver missing",
+          "Check Device Manager, install CH340"
+        ],
+        [
+          "RMS error > 1.0 px",
+          "CalibWorker",
+          "Poor calibration images",
+          "Recapture with better coverage"
+        ],
+        [
+          "Homography computation failed",
+          "CalibrationMath",
+          "< 4 calibration points",
+          "Collect at least 12 points"
+        ],
+        [
+          "TensorRT engine incompatible",
+          "VisionEngine",
+          "Engine built on different GPU",
+          "Rebuild .engine on this machine"
+        ],
+        [
+          "settings.json JSONDecodeError",
+          "config.py",
+          "Corrupted JSON file",
+          "Delete settings.json and restart"
+        ]
+      ]
+    }
+  ],
+  "category": "Support"
+}

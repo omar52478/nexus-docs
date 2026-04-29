@@ -1,0 +1,63 @@
+{
+  "id": "deployment",
+  "title": "Deployment",
+  "icon": "FiGlobe",
+  "faIcon": "fa-solid fa-rocket",
+  "category": "Engineering",
+  "sections": [
+    {
+      "heading": "Deployment Overview",
+      "content": "NEXUS can be deployed as a raw Python application for development or compiled into a standalone executable for production environments. Production deployment requires strict hardware configuration and dependency matching."
+    },
+    {
+      "heading": "System Requirements",
+      "type": "list",
+      "items": [
+        "<strong>OS Runtime:</strong> Windows 10/11 requires Visual C++ Redistributable (x64 and x86) installed.",
+        "<strong>Python:</strong> Version 3.10 is strictly required.",
+        "<strong>Dependencies:</strong> PyQt6, opencv-python, numpy, ultralytics, pyserial, scipy, torch, torchvision.",
+        "<strong>GPU Drivers:</strong> NVIDIA GPU with CUDA Toolkit installed (verify with <code>nvcc --version</code>).",
+        "<strong>AI Acceleration:</strong> TensorRT installed and its <code>lib/</code> folder added to the system PATH.",
+        "<strong>Hardware Drivers:</strong> CH340 USB-Serial driver downloaded from WCH and installed for ESP32 communication."
+      ]
+    },
+    {
+      "heading": "Deployment Methods",
+      "type": "table",
+      "headers": [
+        "Method",
+        "Tool",
+        "Use Case"
+      ],
+      "rows": [
+        [
+          "Python Source",
+          "python main.py",
+          "Development, debugging, and log tracking"
+        ],
+        [
+          "Standalone Executable",
+          "PyInstaller",
+          "End-user deployment without exposing source code"
+        ],
+        [
+          "Hardware Optimization",
+          "ultralytics model.export()",
+          "Building GPU-specific .engine files using TensorRT FP16 for maximum FPS"
+        ]
+      ]
+    },
+    {
+      "heading": "Building the Executable",
+      "type": "code",
+      "language": "bash",
+      "code": "# Compile NEXUS into a single executable without terminal console\npyinstaller --onefile --noconsole --icon=assets/icon.ico main.py\n\n# Note: data/ and models/ folders must be bundled or placed next to the generated .exe to function"
+    },
+    {
+      "heading": "First-Launch Production Setup",
+      "type": "alert",
+      "alertType": "warning",
+      "alertContent": "Before running the engine in a new environment, three settings MUST be configured: <strong>CAM_L_IDX</strong>, <strong>CAM_R_IDX</strong>, and <strong>SERIAL_PORT</strong>. The engine will fail to open cameras or connect to hardware if these point to disconnected or occupied ports."
+    }
+  ]
+}

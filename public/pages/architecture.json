@@ -1,0 +1,76 @@
+{
+  "id": "architecture",
+  "title": "System Architecture",
+  "icon": "FiMap",
+  "faIcon": "fa-solid fa-network-wired",
+  "category": "Core System",
+  "sections": [
+    {
+      "heading": "Architecture Overview",
+      "content": "NEXUS is built as a real-time multi-threaded system combining AI inference, stereo vision, and hardware control. The system follows a modular architecture where six core Python modules communicate via a global CONFIG dictionary and PyQt6 thread-safe signals."
+    },
+    {
+      "heading": "Core Modules Map",
+      "type": "table",
+      "headers": [
+        "Module",
+        "File",
+        "Role"
+      ],
+      "rows": [
+        [
+          "config.py",
+          "config.py",
+          "Global configuration manager loading and saving settings.json"
+        ],
+        [
+          "VisionEngine",
+          "core/vision_engine.py",
+          "Main QThread running the full AI inference loop at 30+ FPS"
+        ],
+        [
+          "GhostPredictor",
+          "core/predictor.py",
+          "Kalman filter application for smoothing raw YOLO bounding boxes/keypoints"
+        ],
+        [
+          "TacticalSerial",
+          "core/hardware_link.py",
+          "Thread-safe serial comms, rate-limiting (15ms), and auto-reconnect monitor"
+        ],
+        [
+          "CalibrationMath",
+          "core/math_calib.py",
+          "Pure static mathematical methods for homography, stereo, and triangulation"
+        ],
+        [
+          "PythonCalibWorker",
+          "core/python_calib_worker.py",
+          "Asynchronous QThread preventing UI freeze during heavy cv2.stereoCalibrate() computation"
+        ]
+      ]
+    },
+    {
+      "heading": "Data Flow Pipeline (VisionEngine.run)",
+      "type": "steps",
+      "steps": [
+        "<strong>Capture:</strong> Read stereo frames simultaneously from left and right USB cameras",
+        "<strong>Rectify:</strong> Apply cv2.remap() using pre-computed maps to epipolar-align both frames",
+        "<strong>Infer:</strong> Run YOLO inference on the left frame via TensorRT",
+        "<strong>Lock:</strong> Apply IoU single-target locking to maintain tracking across frames",
+        "<strong>Extract:</strong> Identify shoulder keypoints [5] and [6] to compute the physical aim point",
+        "<strong>Smooth:</strong> Pass the aim point through GhostPredictor (Kalman Filter)",
+        "<strong>Transform:</strong> Convert pixel coordinates to servo angles via Homography matrix (H)",
+        "<strong>Depth:</strong> Compute real-world distance via stereo disparity between L/R cameras",
+        "<strong>Dispatch:</strong> Send P{pan}T{tilt}L{laser}\\n commands to the ESP32 via TacticalSerial",
+        "<strong>Telemetry:</strong> Emit UI updates via signals"
+      ]
+    },
+    {
+      "heading": "Thread Safety & Signal Flow",
+      "type": "alert",
+      "alertType": "info",
+      "alertContent": "<strong>PyQt6 Signal Architecture:</strong> The VisionEngine (background QThread) is strictly forbidden from updating the UI directly. Instead, it emits <code>frame_ready(np.ndarray)</code> and <code>telemetry_ready(dict)</code> signals. These cross thread boundaries via Qt.QueuedConnection, safely updating the main GUI thread without race conditions."
+    }
+  ]
+}

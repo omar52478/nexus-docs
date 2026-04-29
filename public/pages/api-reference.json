@@ -1,0 +1,296 @@
+{
+  "id": "api-reference",
+  "title": "API Reference",
+  "icon": "⚙️",
+  "faIcon": "fa-solid fa-code",
+  "sections": [
+    {
+      "heading": "Overview",
+      "content": "NEXUS is structured as six core Python modules, each responsible for a specific subsystem. All modules communicate through the global <code>CONFIG</code> dictionary (loaded from <code>settings.json</code>) and PyQt6 signals. The main entry point is <code>main.py</code>, which initializes the <code>QApplication</code>, constructs the <code>MainWindow</code>, and starts the event loop."
+    },
+    {
+      "heading": "Module Map",
+      "type": "table",
+      "headers": [
+        "Module",
+        "File",
+        "Role"
+      ],
+      "rows": [
+        [
+          "config.py",
+          "config.py",
+          "Global CONFIG dict — load/save settings.json"
+        ],
+        [
+          "VisionEngine",
+          "core/vision_engine.py",
+          "QThread — full AI inference loop"
+        ],
+        [
+          "GhostPredictor",
+          "core/predictor.py",
+          "Kalman filter smoother for detections"
+        ],
+        [
+          "TacticalSerial",
+          "core/hardware_link.py",
+          "Thread-safe ESP32 serial comms"
+        ],
+        [
+          "CalibrationMath",
+          "core/math_calib.py",
+          "Pure math — homography, stereo, triangulation"
+        ],
+        [
+          "PythonCalibWorker",
+          "core/python_calib_worker.py",
+          "Background thread for stereo calibration"
+        ]
+      ]
+    },
+    {
+      "heading": "config.py",
+      "content": "Global configuration manager. Reads and writes <code>settings.json</code> in the project root. Exposes a <code>CONFIG</code> dictionary and <code>BASE_DIR</code> path constant used by all other modules. If <code>settings.json</code> does not exist, <code>load_config()</code> generates it with safe default values.",
+      "type": "code",
+      "language": "python",
+      "code": "from config import CONFIG, BASE_DIR, load_config, save_config\n\n# Read a value\nmodel_path = CONFIG['MODEL_PATH']          # e.g. 'models/yolo11x-pose.engine'\nserial_port = CONFIG['SERIAL_PORT']        # e.g. 'COM8'\nresolution  = CONFIG['RESOLUTION']         # e.g. [1280, 720]\n\n# Update a single key and persist to disk\nCONFIG['SERIAL_PORT'] = 'COM3'\nsave_config(CONFIG)\n\n# Reload from disk (e.g. after external edit)\nCONFIG = load_config()\n\n# BASE_DIR — absolute path to project root\nimport os\nmodel_full_path = os.path.join(BASE_DIR, CONFIG['MODEL_PATH'])"
+    },
+    {
+      "heading": "Full CONFIG Keys Reference",
+      "type": "table",
+      "headers": [
+        "Key",
+        "Type",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "MODEL_PATH",
+          "str",
+          "models/yolo11x-pose.engine",
+          "Path to YOLO .pt or .engine file"
+        ],
+        [
+          "CAM_L_IDX",
+          "int",
+          "1",
+          "Left camera OpenCV index"
+        ],
+        [
+          "CAM_R_IDX",
+          "int",
+          "4",
+          "Right camera OpenCV index"
+        ],
+        [
+          "RESOLUTION",
+          "[int,int]",
+          "[1280, 720]",
+          "Camera capture resolution [W, H]"
+        ],
+        [
+          "SERIAL_PORT",
+          "str",
+          "COM8",
+          "ESP32 COM port"
+        ],
+        [
+          "BAUD_RATE",
+          "int",
+          "115200",
+          "Serial baud rate"
+        ],
+        [
+          "CONFIDENCE",
+          "float",
+          "0.5",
+          "Min AI detection confidence (0.1–0.95)"
+        ],
+        [
+          "IOU_THRESHOLD",
+          "float",
+          "0.25",
+          "Min IoU to maintain target lock"
+        ],
+        [
+          "SMOOTHING",
+          "float",
+          "0.2",
+          "EMA alpha for depth smoothing"
+        ],
+        [
+          "MAX_Y_TOLERANCE",
+          "int",
+          "60",
+          "Max vertical pixel jump allowed per frame"
+        ],
+        [
+          "HOME_PAN",
+          "float",
+          "90.0",
+          "Safe home pan angle (degrees)"
+        ],
+        [
+          "HOME_TILT",
+          "float",
+          "150.0",
+          "Safe home tilt angle (degrees)"
+        ],
+        [
+          "PAN_TRIM",
+          "float",
+          "0.0",
+          "Global pan offset applied to every command"
+        ],
+        [
+          "TILT_TRIM",
+          "float",
+          "0.0",
+          "Global tilt offset applied to every command"
+        ],
+        [
+          "AIM_OFFSET",
+          "int",
+          "0",
+          "Pixels below shoulder midpoint for aim dot"
+        ],
+        [
+          "AIM_SMOOTHNESS",
+          "int",
+          "50",
+          "EMA smoothing on servo output (0–100)"
+        ],
+        [
+          "AIM_FILTER",
+          "int",
+          "50",
+          "Kalman filter intensity (0–100)"
+        ],
+        [
+          "SAFETY_TIMEOUT",
+          "int",
+          "30",
+          "Seconds before auto-home on no detection"
+        ],
+        [
+          "STEREO_FILE",
+          "str",
+          "data/stereo_calibration_py.npz",
+          "Path to stereo calibration archive"
+        ],
+        [
+          "LASER_FILE",
+          "str",
+          "data/laser_alignment.npz",
+          "Path to laser homography archive"
+        ]
+      ]
+    },
+    {
+      "heading": "VisionEngine (core/vision_engine.py)",
+      "content": "The main <code>QThread</code> that runs the full AI pipeline in the background. It captures stereo frames, runs YOLO inference, applies Kalman smoothing, computes stereo depth, transforms pixel coordinates to servo angles via homography, and dispatches commands to the ESP32 — all at 30+ FPS.",
+      "type": "code",
+      "language": "python",
+      "code": "from core.vision_engine import VisionEngine\n\nengine = VisionEngine()\n\n# Connect signals before starting\nengine.frame_ready.connect(my_video_widget.update_frame)      # np.ndarray (H, W*2, 3)\nengine.telemetry_ready.connect(my_dashboard.update_metrics)   # dict\n\n# Lifecycle\nengine.start()              # Calls run() in background thread\nengine.stop()               # Safe shutdown — joins thread\n\n# Runtime controls (thread-safe)\nengine.toggle_laser()       # Toggle laser intent\nengine.reconnect_hardware() # Force immediate ESP32 reconnect"
+    },
+    {
+      "heading": "VisionEngine — Full Signal & Method Reference",
+      "type": "code",
+      "language": "python",
+      "code": "class VisionEngine(QThread):\n\n    # ── Signals ────────────────────────────────────────────────────────\n    frame_ready     = pyqtSignal(np.ndarray)\n    # Emits the combined side-by-side stereo frame every inference cycle\n    # Shape: (H, W*2, 3) — left frame | right frame\n    # Consumers: TacticalVideoWidget.update_frame()\n\n    telemetry_ready = pyqtSignal(dict)\n    # Emits per-frame metrics dict:\n    # {\n    #   'fps': float,            # Inference FPS\n    #   'latency': float,        # ms per frame\n    #   'pan': float,            # Last commanded pan angle\n    #   'tilt': float,           # Last commanded tilt angle\n    #   'conf': float,           # AI detection confidence (0.0–1.0)\n    #   'depth': float,          # Stereo depth in meters (0.0 = uncalibrated)\n    #   'status': str,           # 'LOCKED' or 'SCANNING'\n    #   'calibration_mode': str  # '✅ FULLY CALIBRATED' / '⚠️ STEREO ONLY' / '⚠️ UNCALIBRATED RAW'\n    # }\n\n    # ── Setup Methods ──────────────────────────────────────────────────\n    def setup_model(self):\n        \"\"\"Load/reload YOLO model from CONFIG['MODEL_PATH'].\n        Auto-detects task: 'pose', 'seg', or 'detect' from filename.\"\"\"\n\n    def setup_matrices(self):\n        \"\"\"Load stereo rectification maps and laser homography H from .npz files.\n        Sets calibration_mode based on which files are present.\"\"\"\n\n    def setup(self):\n        \"\"\"Open both cameras at CAM_L_IDX and CAM_R_IDX.\n        Initialize TacticalSerial and attempt hardware connection.\"\"\"\n\n    # ── Main Loop ──────────────────────────────────────────────────────\n    def run(self):\n        \"\"\"Main inference loop. Called automatically by QThread.start().\n        Runs: capture → rectify → infer → lock → extract → smooth → transform → dispatch.\"\"\"\n\n    # ── Control Methods ────────────────────────────────────────────────\n    def stop(self):\n        \"\"\"Signal the run loop to exit, stop cameras, disconnect hardware.\"\"\"\n\n    def toggle_laser(self):\n        \"\"\"Delegate to TacticalSerial.toggle_laser(). Preserves intent across reconnects.\"\"\"\n\n    def toggle_alarm(self, state: int):\n        \"\"\"Send B1 or B0 buzzer command via TacticalSerial.\"\"\"\n\n    def reconnect_hardware(self):\n        \"\"\"Force immediate reconnect attempt — bypasses 5s cooldown.\"\"\""
+    },
+    {
+      "heading": "GhostPredictor (core/predictor.py)",
+      "content": "Pure Kalman filter for smoothing raw YOLO detection coordinates. It does NOT predict future positions — it only returns the corrected (filtered) current position. The filter intensity is controlled by <code>CONFIG['AIM_FILTER']</code>.",
+      "type": "code",
+      "language": "python",
+      "code": "from core.predictor import GhostPredictor\n\npredictor = GhostPredictor()\n\n# ── Methods ────────────────────────────────────────────────────────────\n\nsmooth_cx, smooth_cy = predictor.predict_target(cx, cy)\n# Feed raw detection center (cx, cy) → returns Kalman-corrected (x, y)\n# Intensity controlled by CONFIG['AIM_FILTER'] (0 = raw, 100 = heavy)\n\nvx, vy = predictor.get_velocity()\n# Returns current velocity estimate in px/frame (float, float)\n\nconfidence = predictor.get_confidence()\n# Returns Kalman filter confidence: 0.0 (cold/uncertain) → 1.0 (stable)\n\npredictor.reset()\n# Clear all filter state — called when target lock is lost"
+    },
+    {
+      "heading": "TacticalSerial (core/hardware_link.py)",
+      "content": "Thread-safe serial communication layer for the ESP32. Runs a background monitor thread that detects disconnections via heartbeat timeout and auto-reconnects. All public methods are safe to call from any thread.",
+      "type": "code",
+      "language": "python",
+      "code": "from core.hardware_link import TacticalSerial\n\nhw = TacticalSerial()\n\n# ── Connection ─────────────────────────────────────────────────────────\nbool = hw.connect()\n# Attempt connection to CONFIG['SERIAL_PORT'] at CONFIG['BAUD_RATE']\n# Returns True on success. Also starts background monitor thread.\n\nbool = hw.force_reconnect()\n# Bypass 5-second cooldown and reconnect immediately\n# Used by Dashboard RECONNECT button\n\nbool = hw.is_connected()\n# Returns True if port is open AND heartbeat received within 6 seconds\n\npan, tilt = hw.get_current_angles()\n# Returns last known servo angles from ACK or HB response\n\n# ── Command Dispatch ───────────────────────────────────────────────────\nhw.send_target(pan=90.0, tilt=150.0)\n# Sends: 'P90.0T150.0L{laser_state}\\n'\n# Thread-safe (internal lock). Respects 15ms rate limit (~66Hz max)\n# If disconnected, command is silently dropped\n\nstate = hw.toggle_laser()\n# Toggle laser 0→1 or 1→0. Returns new state int.\n# Intent preserved: stored internally, re-sent on reconnect\n\nhw.force_laser(state=1)   # Force ON\nhw.force_laser(state=0)   # Force OFF\n\nhw.toggle_alarm(state=1)  # Send 'B1\\n' — buzzer ON\nhw.toggle_alarm(state=0)  # Send 'B0\\n' — buzzer OFF\n\n# ── Shutdown ───────────────────────────────────────────────────────────\nhw.close()\n# Send home command → close serial port → stop monitor thread"
+    },
+    {
+      "heading": "CalibrationMath (core/math_calib.py)",
+      "content": "Pure static mathematical functions. No state. All methods are decorated with <code>@staticmethod</code> and have no side effects. Used by both the calibration tabs and the VisionEngine.",
+      "type": "code",
+      "language": "python",
+      "code": "from core.math_calib import CalibrationMath\nimport numpy as np\n\n# ── Homography ─────────────────────────────────────────────────────────\nH = CalibrationMath.calculate_homography(src, dst)\n# src: (N,2) array of pixel coordinates  [cx, cy]\n# dst: (N,2) array of servo angles       [pan, tilt]\n# Uses cv2.findHomography with RANSAC (ransacReprojThreshold=5.0)\n# Returns: (3,3) float64 homography matrix H\n# Requires N >= 4, recommended N >= 12\n\npan, tilt = CalibrationMath.apply_homography(px=640.0, py=360.0, H=H)\n# Transform a single pixel point to servo angles\n# Returns: (float, float) — pan in degrees, tilt in degrees\n\n# ── Stereo Rectification ───────────────────────────────────────────────\nresult = CalibrationMath.compute_stereo_rectification(\n    K1, D1, K2, D2, R, T,\n    image_size=(1280, 720)\n)\n# Returns dict with keys:\n# 'mapL1','mapL2' — left rectification maps  (for cv2.remap)\n# 'mapR1','mapR2' — right rectification maps (for cv2.remap)\n# 'focal_px'      — rectified focal length in pixels\n# 'baseline_cm'   — camera separation in cm (from |T|)\n\n# ── Triangulation ──────────────────────────────────────────────────────\nx, y, z = CalibrationMath.triangulate_3d_point(\n    px_left, py_left,\n    px_right, py_right,\n    K1, D1, K2, D2, R, T\n)\n# Full DLT triangulation. Returns 3D point (x, y, z) in cm.\n\n# ── Reprojection Error ─────────────────────────────────────────────────\nerror = CalibrationMath.calculate_reprojection_error(\n    obj_points, img_points, rvec, tvec, K, D\n)\n# Returns mean reprojection error in pixels (float)"
+    },
+    {
+      "heading": "PythonCalibWorker (core/python_calib_worker.py)",
+      "content": "A <code>QThread</code> that runs the computationally expensive stereo calibration in the background so the UI stays responsive. It uses <code>cv2.stereoCalibrate()</code> and emits progress and result signals.",
+      "type": "code",
+      "language": "python",
+      "code": "from core.python_calib_worker import PythonCalibWorker\n\nworker = PythonCalibWorker(\n    image_pairs=list_of_frame_tuples,   # [(left_img, right_img), ...]\n    square_size_mm=25.0,                # Physical square size in mm\n    pattern=(9, 6)                      # Inner corners (cols, rows)\n)\n\n# Signals\nworker.progress.connect(lambda msg: log_panel.append(msg))\n# Emits: str — progress messages during calibration\n\nworker.finished.connect(on_calibration_done)\n# Emits: dict with keys:\n# {\n#   'K1','D1','K2','D2',           # Camera matrices + distortion\n#   'R','T','E','F',               # Extrinsic + fundamental matrices\n#   'mapL1','mapL2',               # Left rectification maps\n#   'mapR1','mapR2',               # Right rectification maps\n#   'focal_px', 'baseline_cm',     # Depth formula parameters\n#   'rms': float,                  # Final RMS reprojection error\n#   'success': bool                # True if calibration converged\n# }\n\nworker.start()  # Begin calibration in background thread"
+    },
+    {
+      "heading": "PyQt6 Signal Architecture",
+      "content": "NEXUS uses Qt's signal/slot mechanism for all inter-thread communication. The VisionEngine QThread never directly updates the UI — it emits signals, and the main GUI thread receives them.",
+      "type": "code",
+      "language": "python",
+      "code": "# Signal flow in NEXUS:\n#\n# VisionEngine (background QThread)\n#        │\n#        ├──► frame_ready(np.ndarray)\n#        │         └──► TacticalVideoWidget.update_frame()\n#        │                   └──► Converts to QPixmap, calls update()\n#        │\n#        └──► telemetry_ready(dict)\n#                  ├──► Dashboard.update_metrics()     — FPS, pan, tilt, etc.\n#                  ├──► Dashboard.update_hw_status()   — HW: LINKED / DISCONNECTED\n#                  └──► Dashboard.update_target_badge() — TARGET LOCKED / SCANNING\n#\n# All signal connections use Qt.AutoConnection (default)\n# = Qt.QueuedConnection when crossing thread boundaries\n# This means UI updates are always safe and never cause race conditions"
+    },
+    {
+      "heading": "Data File Formats",
+      "type": "table",
+      "headers": [
+        "File",
+        "Format",
+        "Key Arrays",
+        "Read With"
+      ],
+      "rows": [
+        [
+          "stereo_calibration_py.npz",
+          "NumPy archive",
+          "K1,D1,K2,D2,R,T,E,F,mapL1,mapL2,mapR1,mapR2,focal_px,baseline_cm,rms",
+          "np.load(path)"
+        ],
+        [
+          "stereo_calibration_bridge.npz",
+          "NumPy archive",
+          "Same as above (MATLAB-precision)",
+          "np.load(path)"
+        ],
+        [
+          "laser_alignment.npz",
+          "NumPy archive",
+          "H, src_points, dst_points, point_count, reprojection_error",
+          "np.load(path)"
+        ],
+        [
+          "settings.json",
+          "JSON dict",
+          "All CONFIG keys (see CONFIG Keys table)",
+          "json.load(f) or load_config()"
+        ],
+        [
+          "yolo11x-pose.engine",
+          "TensorRT binary",
+          "GPU-specific engine — not portable",
+          "YOLO(path) from ultralytics"
+        ],
+        [
+          "yolo11x-pose.pt",
+          "PyTorch checkpoint",
+          "Model weights — portable across machines",
+          "YOLO(path) from ultralytics"
+        ]
+      ]
+    },
+    {
+      "heading": "Quick Integration Example",
+      "content": "Minimal example of embedding the VisionEngine in a custom PyQt6 application:",
+      "type": "code",
+      "language": "python",
+      "code": "import sys\nfrom PyQt6.QtWidgets import QApplication, QMainWindow, QLabel\nfrom PyQt6.QtCore import Qt\nfrom config import load_config, CONFIG\nfrom core.vision_engine import VisionEngine\n\napp = QApplication(sys.argv)\n\n# Ensure config is loaded\nload_config()\nCONFIG['MODEL_PATH'] = 'models/yolo11m-pose.engine'\nCONFIG['SERIAL_PORT'] = 'COM3'\n\nengine = VisionEngine()\n\n# Connect telemetry to a simple label\nlabel = QLabel(\"Waiting for telemetry...\")\n\ndef on_telemetry(data):\n    label.setText(\n        f\"FPS: {data['fps']:.1f} | \"\n        f\"PAN: {data['pan']:.1f}° | \"\n        f\"TILT: {data['tilt']:.1f}° | \"\n        f\"DEPTH: {data['depth']:.2f}m | \"\n        f\"{data['status']}\"\n    )\n\nengine.telemetry_ready.connect(on_telemetry)\nengine.start()\n\nlabel.show()\nsys.exit(app.exec())"
+    }
+  ],
+  "category": "Engineering"
+}

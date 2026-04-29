@@ -1,0 +1,290 @@
+{
+  "id": "hardware",
+  "title": "Hardware Setup",
+  "icon": "🎮",
+  "faIcon": "fa-solid fa-microchip",
+  "sections": [
+    {
+      "heading": "Hardware Overview",
+      "content": "NEXUS hardware consists of two USB cameras for stereo vision and an ESP32 DevKit that controls a pan/tilt servo mechanism with an attached laser module. The ESP32 communicates with NEXUS over USB-Serial at 115200 baud using a custom text-based protocol. All hardware communication is handled by the <code>TacticalSerial</code> class in <code>core/hardware_link.py</code>."
+    },
+    {
+      "heading": "Hardware Components",
+      "type": "table",
+      "headers": [
+        "Component",
+        "Specification",
+        "Purpose",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "ESP32 DevKit v1",
+          "CH340 USB-Serial chip",
+          "Servo controller + laser driver + buzzer",
+          "Runs nexus_guardian_v2.2.ino firmware"
+        ],
+        [
+          "Pan Servo",
+          "MG996R (or DS3218) — Metal gear",
+          "Horizontal rotation 0–180°",
+          "Requires external 5V/2A power supply — do not power from ESP32 5V"
+        ],
+        [
+          "Tilt Servo",
+          "MG996R (or DS3218) — Metal gear",
+          "Vertical rotation 0–180°",
+          "Home position: Tilt=150° (pointing slightly downward)"
+        ],
+        [
+          "Laser Module",
+          "5mW 650nm Red dot laser",
+          "Target illumination point",
+          "Controlled via ESP32 GPIO — TTL high/low"
+        ],
+        [
+          "Buzzer",
+          "Active piezo buzzer",
+          "Alarm / audio alert",
+          "Optional — B1/B0 commands in firmware v2.2"
+        ],
+        [
+          "Left Camera",
+          "USB 2.0/3.0 Webcam — 720p/1080p",
+          "Primary vision + AI inference",
+          "Connected to CAM_L_IDX port"
+        ],
+        [
+          "Right Camera",
+          "USB 2.0/3.0 Webcam — 720p/1080p",
+          "Stereo pair for depth estimation",
+          "Connected to CAM_R_IDX port"
+        ]
+      ]
+    },
+    {
+      "heading": "ESP32 GPIO Wiring",
+      "type": "table",
+      "headers": [
+        "ESP32 Pin",
+        "Connected To",
+        "Signal Type",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "GPIO 13",
+          "Pan Servo — Signal wire",
+          "PWM 50Hz",
+          "Orange/Yellow signal wire; Red→5V ext; Brown/Black→GND"
+        ],
+        [
+          "GPIO 12",
+          "Tilt Servo — Signal wire",
+          "PWM 50Hz",
+          "Same wiring color convention"
+        ],
+        [
+          "GPIO 14",
+          "Laser Module — Control pin",
+          "Digital OUT (TTL)",
+          "High = laser ON, Low = laser OFF"
+        ],
+        [
+          "GPIO 27",
+          "Buzzer — Positive pin",
+          "Digital OUT",
+          "Active buzzer — HIGH triggers sound"
+        ],
+        [
+          "GND",
+          "Servo GND, Laser GND, Buzzer GND",
+          "Common ground",
+          "All GND lines must share common ground with ESP32"
+        ],
+        [
+          "VIN / 5V Ext",
+          "Servo power (Red wires)",
+          "5V @ 2A min",
+          "Use external regulator — servos draw too much current for onboard 5V"
+        ]
+      ]
+    },
+    {
+      "heading": "ESP32 Firmware",
+      "content": "The ESP32 runs <code>nexus_guardian_v2.2.ino</code> which accepts serial commands, drives servos via hardware PWM, controls the laser GPIO, and streams a heartbeat for connection health monitoring.",
+      "type": "code",
+      "language": "text",
+      "code": "# Serial Command Format (sent from NEXUS → ESP32)\nP{pan}T{tilt}L{laser}\\n\n\n# Examples:\nP90.0T150.0L1\\n    → Pan=90°, Tilt=150°, Laser ON\nP45.5T120.0L0\\n    → Pan=45.5°, Tilt=120°, Laser OFF\nB1\\n               → Buzzer ON\nB0\\n               → Buzzer OFF\n\n# ESP32 Responses:\nACK:{pan},{tilt}   → Confirms command received and executed\nHB:{pan},{tilt},{laser}  → Heartbeat emitted every 2 seconds automatically"
+    },
+    {
+      "heading": "Serial Protocol Details",
+      "type": "table",
+      "headers": [
+        "Parameter",
+        "Value",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Baud Rate",
+          "115200",
+          "Must match in Settings → BAUD_RATE"
+        ],
+        [
+          "Data Bits",
+          "8",
+          "Standard 8N1"
+        ],
+        [
+          "Stop Bits",
+          "1",
+          "Standard 8N1"
+        ],
+        [
+          "Parity",
+          "None",
+          "Standard 8N1"
+        ],
+        [
+          "Command Rate Limit",
+          "15ms minimum (~66Hz max)",
+          "Firmware enforces this — faster commands are ignored"
+        ],
+        [
+          "Heartbeat Interval",
+          "Every 2 seconds",
+          "Emitted by ESP32 automatically — used by TacticalSerial to detect disconnection"
+        ],
+        [
+          "Home Position Pan",
+          "90.0°",
+          "Center — sent on startup and safety timeout"
+        ],
+        [
+          "Home Position Tilt",
+          "150.0°",
+          "Slightly downward — sent on startup and safety timeout"
+        ],
+        [
+          "Servo PWM Frequency",
+          "50 Hz",
+          "Standard RC servo frequency"
+        ],
+        [
+          "Angle Resolution",
+          "0.1°",
+          "Commands sent with 1 decimal place"
+        ]
+      ]
+    },
+    {
+      "heading": "TacticalSerial (core/hardware_link.py)",
+      "content": "The <code>TacticalSerial</code> class provides thread-safe serial communication with the ESP32. It runs a background monitoring thread that detects disconnections and attempts auto-reconnect every 5 seconds.",
+      "type": "code",
+      "language": "python",
+      "code": "class TacticalSerial:\n    def connect(self) -> bool:\n        \"\"\"Attempt to connect to CONFIG['SERIAL_PORT'] at CONFIG['BAUD_RATE'].\n           Returns True if successful.\"\"\"\n\n    def force_reconnect(self) -> bool:\n        \"\"\"Bypass the 5-second reconnect cooldown.\n           Used by Dashboard RECONNECT button.\"\"\"\n\n    def send_target(self, pan: float, tilt: float) -> None:\n        \"\"\"Dispatch a servo command: 'P{pan}T{tilt}L{laser_state}\\\\n'\n           Thread-safe — uses internal lock. Respects 15ms rate limit.\"\"\"\n\n    def toggle_laser(self) -> int:\n        \"\"\"Toggle laser state (0→1 or 1→0). Returns new state.\n           Intent is preserved: if ESP32 drops, laser state is restored on reconnect.\"\"\"\n\n    def force_laser(self, state: int) -> None:\n        \"\"\"Force laser to 0 (OFF) or 1 (ON) directly.\"\"\"\n\n    def toggle_alarm(self, state: int) -> None:\n        \"\"\"Send B1 (buzzer on) or B0 (buzzer off) to ESP32.\"\"\"\n\n    def is_connected(self) -> bool:\n        \"\"\"Returns True if serial port is open and heartbeat received recently.\"\"\"\n\n    def get_current_angles(self) -> tuple:\n        \"\"\"Returns last known (pan, tilt) angles from heartbeat/ACK.\"\"\"\n\n    def close(self) -> None:\n        \"\"\"Safe shutdown — sends home command, closes port, stops monitor thread.\"\"\""
+    },
+    {
+      "heading": "Auto-Reconnect Behavior",
+      "content": "The <code>TacticalSerial</code> background monitor thread tracks connection health using heartbeat timing. If no heartbeat is received within 6 seconds, the port is flagged as disconnected and reconnect attempts begin automatically.",
+      "list": [
+        "<strong>Detection:</strong> Heartbeat timeout after 6 seconds of silence marks connection as lost",
+        "<strong>Auto-retry:</strong> Reconnect attempted every 5 seconds automatically",
+        "<strong>Force reconnect:</strong> Dashboard RECONNECT button calls <code>force_reconnect()</code> to bypass cooldown",
+        "<strong>Laser state restore:</strong> On successful reconnect, the last known laser intent is automatically re-sent",
+        "<strong>Home on disconnect:</strong> Servos return to home position (Pan=90°, Tilt=150°) when connection is lost"
+      ]
+    },
+    {
+      "heading": "Flashing ESP32 Firmware",
+      "content": "The ESP32 must have the NEXUS firmware flashed before any hardware communication works. Flash using Arduino IDE 2.x.",
+      "type": "steps",
+      "steps": [
+        "Open <strong>Arduino IDE 2.x</strong> (download from arduino.cc if needed)",
+        "Add ESP32 board support: File → Preferences → Additional Boards Manager URLs → paste <code>https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json</code>",
+        "Install board: Tools → Boards Manager → search <strong>esp32</strong> → install <strong>esp32 by Espressif Systems</strong>",
+        "Open <code>firmware/nexus_guardian_v2.2.ino</code> from the NEXUS project folder",
+        "Select Tools → Board: <strong>ESP32 Dev Module</strong>",
+        "Select Tools → Port: the CH340 COM port (e.g., COM3, COM8)",
+        "Click <strong>Upload</strong> (→ button). Wait for 'Done uploading'",
+        "Open Serial Monitor at <strong>115200 baud</strong> — you should see heartbeat lines: <code>HB:90.0,150.0,0</code>"
+      ]
+    },
+    {
+      "heading": "Hardware Control Tab (tab_hardware.py)",
+      "content": "The Hardware Control tab provides manual control over servos and the laser without running the full AI engine. Useful for testing wiring, verifying servo ranges, and collecting laser alignment points.",
+      "list": [
+        "<strong>Manual Pan Slider:</strong> Move pan servo from 0° to 180° manually",
+        "<strong>Manual Tilt Slider:</strong> Move tilt servo from 0° to 180° manually",
+        "<strong>Laser Toggle Button:</strong> Turn laser on/off independently of the AI engine",
+        "<strong>Send to Home:</strong> Immediately send Pan=90°, Tilt=150° home position",
+        "<strong>Sweep Test:</strong> Automatically sweep pan from 0° to 180° and back — verifies full servo range",
+        "<strong>Connect / Disconnect:</strong> Manually open or close the serial connection to the ESP32",
+        "<strong>Serial Monitor:</strong> Live view of raw serial traffic (commands sent + ACK/HB received)"
+      ]
+    },
+    {
+      "heading": "Connection Troubleshooting",
+      "type": "alert",
+      "alertType": "warning",
+      "alertContent": "If hardware fails to connect: (1) Verify correct COM port in Settings — check Device Manager → Ports (COM & LPT). (2) Install CH340 driver from WCH if the port doesn't appear. (3) Ensure no other application (Arduino IDE Serial Monitor, PuTTY, another NEXUS instance) is using the same COM port. (4) Try a different USB cable — some cables are charge-only and don't carry data. (5) Reboot the ESP32 by pressing its RESET button while NEXUS is running."
+    },
+    {
+      "heading": "Power Supply Requirements",
+      "content": "Incorrect power supply is the most common cause of erratic servo behavior (jitter, weak movement, or no movement).",
+      "type": "table",
+      "headers": [
+        "Component",
+        "Voltage",
+        "Current (Peak)",
+        "Recommended Supply"
+      ],
+      "rows": [
+        [
+          "Pan Servo (MG996R)",
+          "4.8 — 6.6V",
+          "2.5A stall",
+          "External 5V 3A regulator or BEC"
+        ],
+        [
+          "Tilt Servo (MG996R)",
+          "4.8 — 6.6V",
+          "2.5A stall",
+          "Same external supply as pan servo"
+        ],
+        [
+          "ESP32 DevKit",
+          "5V (USB) or 3.3V (pin)",
+          "250mA max",
+          "Powered via USB from NEXUS PC"
+        ],
+        [
+          "Laser Module (5mW)",
+          "3.0 — 5.0V",
+          "30mA",
+          "Can use ESP32 3.3V or 5V pin"
+        ],
+        [
+          "Buzzer (active piezo)",
+          "3.3 — 5V",
+          "25mA",
+          "Can use ESP32 3.3V pin"
+        ]
+      ]
+    },
+    {
+      "heading": "Camera Physical Setup",
+      "content": "Camera placement directly affects stereo triangulation accuracy. Follow these guidelines for optimal depth estimation:",
+      "list": [
+        "<strong>Baseline distance:</strong> 6–12 cm between camera centers is ideal for targets at 0.5–5m range. Wider baseline = better far-distance depth but worse near-distance accuracy",
+        "<strong>Parallel alignment:</strong> Both cameras must point in exactly the same direction. Use a rigid mounting bar or 3D-printed bracket",
+        "<strong>Same optical axis height:</strong> Camera centers should be at identical heights — vertical misalignment adds y-disparity error",
+        "<strong>No toe-in:</strong> Both cameras must be parallel, NOT angled toward each other. Stereo calibration handles small misalignments but not deliberate toe-in",
+        "<strong>Rigid mount:</strong> Any flex between cameras invalidates calibration. Tighten all screws. Re-calibrate if the mount is disturbed",
+        "<strong>USB cable routing:</strong> Keep USB cables from both cameras at the same length to avoid one pulling on the mount"
+      ]
+    }
+  ],
+  "category": "Basics"
+}

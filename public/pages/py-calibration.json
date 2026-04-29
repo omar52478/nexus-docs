@@ -1,0 +1,180 @@
+{
+  "id": "py-calibration",
+  "title": "PY Calibration",
+  "icon": "🔬",
+  "faIcon": "fa-solid fa-microscope",
+  "sections": [
+    {
+      "heading": "PY Calibration Overview",
+      "content": "The PY Calibration tab (<code>tab_pycalib.py</code>) provides a fully integrated stereo camera calibration workflow using Python and OpenCV. By capturing pairs of chessboard images from both cameras simultaneously, the system computes intrinsic parameters (focal length, principal point, distortion) and extrinsic parameters (rotation R, translation T) for both cameras. The output is a <code>stereo_calibration_py.npz</code> file used by the VisionEngine for stereo rectification and depth estimation."
+    },
+    {
+      "heading": "Why Stereo Calibration is Required",
+      "content": "Raw camera images have lens distortion and no shared geometric reference frame. Stereo calibration solves both problems:",
+      "list": [
+        "<strong>Intrinsic calibration:</strong> Models each camera's lens distortion and focal length, enabling undistortion of raw frames",
+        "<strong>Extrinsic calibration:</strong> Computes the precise 3D relationship (R, T) between the two camera positions",
+        "<strong>Rectification maps:</strong> Pre-computes <code>cv2.remap()</code> maps so each frame pair is epipolar-aligned — meaning corresponding points share the same row in both images",
+        "<strong>Depth via disparity:</strong> After rectification, depth is simply <code>(focal_px × baseline_cm) / disparity_px</code> — only valid after calibration",
+        "<strong>Without calibration:</strong> NEXUS runs in UNCALIBRATED RAW mode — no depth estimation, and servo angles use a rough linear pixel approximation"
+      ]
+    },
+    {
+      "heading": "Calibration Workflow",
+      "type": "steps",
+      "steps": [
+        "Print a <strong>9×6 inner-corner chessboard pattern</strong> on flat, rigid paper — A3 size recommended. Mount on foam board to ensure it stays perfectly flat",
+        "Go to the <strong>🔬 PY CALIBRATION</strong> tab",
+        "Set <strong>Square Size (mm)</strong> — measure one printed square precisely with calipers. Accuracy here directly affects the scale of depth measurements",
+        "Set <strong>Board Columns</strong> = 9 and <strong>Board Rows</strong> = 6 (inner corners, not total squares)",
+        "Click <strong>START CAPTURE</strong> — both camera feeds appear side by side in the panel",
+        "Hold the chessboard in the combined camera view — when both cameras detect all corners, a <strong>green overlay</strong> appears on both feeds",
+        "Move the board to a new position/angle and click <strong>CAPTURE PAIR</strong> (or press <kbd>Space</kbd>) to record the image pair",
+        "Collect at least <strong>20 valid pairs</strong> covering all regions: corners, edges, center, different distances, and tilted angles",
+        "Once satisfied, click <strong>RUN CALIBRATION</strong> — a background thread computes <code>cv2.stereoCalibrate()</code>",
+        "Review the <strong>RMS Reprojection Error</strong> — target <strong>&lt; 1.0 px</strong> (< 0.5 px is excellent)",
+        "Click <strong>SAVE CALIBRATION</strong> to write <code>data/stereo_calibration_py.npz</code>",
+        "Restart the engine (or click START ENGINE on Dashboard) to load the new calibration"
+      ]
+    },
+    {
+      "heading": "Chessboard Requirements",
+      "type": "table",
+      "headers": [
+        "Parameter",
+        "Value",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Pattern type",
+          "Chessboard (asymmetric corner grid)",
+          "OpenCV findChessboardCorners expects inner corners only"
+        ],
+        [
+          "Inner columns",
+          "9",
+          "Number of inner corner columns — NOT squares"
+        ],
+        [
+          "Inner rows",
+          "6",
+          "Number of inner corner rows — NOT squares"
+        ],
+        [
+          "Recommended print size",
+          "A3 (420 × 297 mm)",
+          "Larger board = better far-distance calibration"
+        ],
+        [
+          "Square size accuracy",
+          "± 0.1 mm",
+          "Measured with calipers — errors here scale depth readings proportionally"
+        ],
+        [
+          "Surface requirement",
+          "Flat, rigid, matte finish",
+          "Glossy paper creates glare artifacts that break corner detection"
+        ]
+      ]
+    },
+    {
+      "heading": "Capture Best Practices",
+      "content": "Image quality is the most important factor for achieving low RMS error. Poor images cause incorrect corner detections that inflate the reprojection error.",
+      "list": [
+        "<strong>Coverage:</strong> Fill all regions of the frame — top-left, top-right, bottom-left, bottom-right, and center. Sparse coverage leads to high distortion error at frame edges",
+        "<strong>Angles:</strong> Tilt the board 20–45° in both X and Y axes for several captures. Flat-on images (board parallel to camera plane) contribute little constraint to the calibration",
+        "<strong>Distances:</strong> Capture at 3+ different distances: ~50 cm, ~100 cm, ~150 cm. Variable distance is critical for accurate focal length estimation",
+        "<strong>Sharpness:</strong> Hold the board completely still during capture. Motion blur causes incorrect subpixel corner localization",
+        "<strong>Lighting:</strong> Use diffuse, even lighting. Avoid shadows across the board and avoid reflections on glossy printouts",
+        "<strong>Synchrony:</strong> Both cameras must see the board at the same instant. Hold the board still for at least 0.5 seconds before pressing capture"
+      ]
+    },
+    {
+      "heading": "Corner Detection and Pair Validation",
+      "content": "Each time you attempt a capture, the system runs corner detection on both frames simultaneously. A pair is only recorded if both cameras successfully detect all corners:",
+      "type": "code",
+      "language": "python",
+      "code": "# From core/python_calib_worker.py — corner detection\nimport cv2, numpy as np\n\ndef detect_corners(frame, board_size=(9, 6)):\n    \"\"\"\n    Detect chessboard inner corners in a single frame.\n    Returns (success, corners) where corners is shape (N, 1, 2).\n    \"\"\"\n    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)\n    ret, corners = cv2.findChessboardCorners(gray, board_size, None)\n\n    if ret:\n        # Refine to subpixel accuracy\n        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)\n        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)\n\n    return ret, corners\n\n# A pair is valid only if BOTH cameras detect all corners:\nret_L, corners_L = detect_corners(left_frame)\nret_R, corners_R = detect_corners(right_frame)\n\nif ret_L and ret_R:\n    self.image_points_L.append(corners_L)\n    self.image_points_R.append(corners_R)\n    self.valid_pair_count += 1\n    # Draw overlay on both feeds\n    cv2.drawChessboardCorners(left_frame, (9, 6), corners_L, ret_L)\n    cv2.drawChessboardCorners(right_frame, (9, 6), corners_R, ret_R)"
+    },
+    {
+      "heading": "Running the Calibration",
+      "content": "Once 20+ image pairs are collected, <code>cv2.stereoCalibrate()</code> is called in a background <code>QThread</code> to avoid freezing the UI:",
+      "type": "code",
+      "language": "python",
+      "code": "# From core/python_calib_worker.py — PythonCalibWorker\nimport cv2, numpy as np\n\nclass PythonCalibWorker(QThread):\n    progress = pyqtSignal(str)   # Status messages → Logs tab\n    finished = pyqtSignal(dict)  # Result dict on completion\n\n    def run(self):\n        board_size = (self.cols, self.rows)  # e.g. (9, 6)\n        sq = self.square_size_mm\n\n        # Build 3D object points: (0,0,0), (sq,0,0), (2*sq,0,0) ...\n        objp = np.zeros((board_size[0] * board_size[1], 3), np.float32)\n        objp[:, :2] = np.mgrid[0:board_size[0], 0:board_size[1]].T.reshape(-1, 2)\n        objp *= sq\n        obj_points = [objp] * len(self.image_points_L)\n\n        # Individual camera calibration\n        rms_L, K1, D1, _, _ = cv2.calibrateCamera(obj_points, self.image_points_L, self.img_size, None, None)\n        rms_R, K2, D2, _, _ = cv2.calibrateCamera(obj_points, self.image_points_R, self.img_size, None, None)\n        self.progress.emit(f\"Individual RMS — L:{rms_L:.3f}px  R:{rms_R:.3f}px\")\n\n        # Stereo calibration\n        flags = cv2.CALIB_FIX_INTRINSIC\n        rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(\n            obj_points, self.image_points_L, self.image_points_R,\n            K1, D1, K2, D2, self.img_size,\n            flags=flags\n        )\n        self.progress.emit(f\"Stereo RMS: {rms:.4f} px\")\n\n        # Compute rectification maps\n        R1, R2, P1, P2, Q, _, _ = cv2.stereoRectify(K1, D1, K2, D2, self.img_size, R, T)\n        mapL1, mapL2 = cv2.initUndistortRectifyMap(K1, D1, R1, P1, self.img_size, cv2.CV_32FC1)\n        mapR1, mapR2 = cv2.initUndistortRectifyMap(K2, D2, R2, P2, self.img_size, cv2.CV_32FC1)\n\n        focal_px    = float(P1[0, 0])\n        baseline_cm = float(np.linalg.norm(T)) / 10.0  # mm → cm\n\n        self.finished.emit({\n            'rms': rms, 'K1': K1, 'D1': D1, 'K2': K2, 'D2': D2,\n            'R': R, 'T': T, 'E': E, 'F': F,\n            'mapL1': mapL1, 'mapL2': mapL2, 'mapR1': mapR1, 'mapR2': mapR2,\n            'focal_px': focal_px, 'baseline_cm': baseline_cm\n        })"
+    },
+    {
+      "heading": "Calibration Quality Metrics",
+      "type": "table",
+      "headers": [
+        "RMS Error",
+        "Quality",
+        "Action"
+      ],
+      "rows": [
+        [
+          "< 0.3 px",
+          "🟢 Excellent",
+          "Save immediately — proceed to laser alignment"
+        ],
+        [
+          "0.3 — 0.7 px",
+          "🟡 Good",
+          "Acceptable for all use cases — save and proceed"
+        ],
+        [
+          "0.7 — 1.0 px",
+          "🟠 Fair",
+          "Consider recapturing — check image sharpness and board flatness"
+        ],
+        [
+          "> 1.0 px",
+          "🔴 Poor",
+          "Must recalibrate — likely blurry images, bad board, or poor coverage"
+        ]
+      ]
+    },
+    {
+      "heading": "What Gets Saved",
+      "type": "code",
+      "language": "python",
+      "code": "# stereo_calibration_py.npz — saved to data/ folder\nnp.savez(\n    'data/stereo_calibration_py.npz',\n    K1           = K1,           # (3,3) Left camera intrinsic matrix\n    D1           = D1,           # (1,5) Left camera distortion coefficients\n    K2           = K2,           # (3,3) Right camera intrinsic matrix\n    D2           = D2,           # (1,5) Right camera distortion coefficients\n    R            = R,            # (3,3) Rotation between cameras\n    T            = T,            # (3,1) Translation (baseline vector)\n    E            = E,            # (3,3) Essential matrix\n    F            = F,            # (3,3) Fundamental matrix\n    mapL1        = mapL1,        # Left rectification map (x)\n    mapL2        = mapL2,        # Left rectification map (y)\n    mapR1        = mapR1,        # Right rectification map (x)\n    mapR2        = mapR2,        # Right rectification map (y)\n    focal_px     = focal_px,     # float — focal length in pixels\n    baseline_cm  = baseline_cm,  # float — camera separation in cm\n    rms          = rms           # float — stereo calibration RMS error\n)\n\n# To inspect a saved calibration:\nimport numpy as np\ndata = np.load('data/stereo_calibration_py.npz', allow_pickle=True)\nprint(f\"Focal length: {data['focal_px']:.1f} px\")\nprint(f\"Baseline: {data['baseline_cm']:.2f} cm\")\nprint(f\"RMS: {data['rms']:.4f} px\")\nprint(f\"Left K:\\n{data['K1']}\")"
+    },
+    {
+      "heading": "Deleting Bad Image Pairs",
+      "content": "If a captured pair looks blurry, misaligned, or caused an outlier detection, you can remove it before running calibration. The PY Calibration tab displays a numbered list of all captured pairs — select any entry and click <strong>DELETE PAIR</strong> to remove it. A live preview of the selected pair is shown in the panel.",
+      "type": "alert",
+      "alertType": "info",
+      "alertContent": "You can delete pairs after collection but before running calibration. Deleting pairs after calibration has already been computed does not affect the saved .npz — you must re-run calibration and save again for changes to take effect."
+    },
+    {
+      "heading": "Verify Rectification Quality",
+      "content": "After calibration is computed, the tab shows a <strong>Rectification Preview</strong> mode — toggle it with the <strong>SHOW RECTIFIED</strong> button. In rectification view, horizontal epipolar lines are drawn across both camera feeds. A good calibration means that any point in the left image falls on the same horizontal line in the right image.",
+      "list": [
+        "<strong>Good rectification:</strong> Features (eyes, shoulders, doorframes) align horizontally across left and right feeds",
+        "<strong>Vertical offset between feeds:</strong> Indicates vertical camera misalignment — remount cameras so optical centers are at the same height",
+        "<strong>Converging/diverging lines:</strong> Indicates the cameras are toed-in — remount with parallel optical axes and recalibrate",
+        "<strong>Wavy lines:</strong> High distortion — may indicate wrong board size (mm) was entered, or the board was not truly flat"
+      ]
+    },
+    {
+      "heading": "When to Recalibrate",
+      "list": [
+        "Either camera was physically moved, loosened, or bumped relative to the other",
+        "Depth estimates are consistently wrong by more than 10% (e.g., measuring 2.2m when target is at 2.0m)",
+        "RMS error in a previous calibration was > 1.0 px",
+        "Camera lenses were refocused or replaced",
+        "You switched to a physically different camera pair",
+        "The mounting bracket was removed, modified, or tightened from a loose state"
+      ]
+    },
+    {
+      "heading": "How the Engine Uses the Calibration",
+      "type": "code",
+      "language": "python",
+      "code": "# In vision_engine.py — setup_matrices()\ndata = np.load(CONFIG['STEREO_FILE'])\nself.mapL1       = data['mapL1']\nself.mapL2       = data['mapL2']\nself.mapR1       = data['mapR1']\nself.mapR2       = data['mapR2']\nself.focal_px    = float(data['focal_px'])\nself.baseline_cm = float(data['baseline_cm'])\nself.has_stereo_cal = True\n\n# In run() — every frame:\nleft_rect  = cv2.remap(left_frame,  self.mapL1, self.mapL2, cv2.INTER_LINEAR)\nright_rect = cv2.remap(right_frame, self.mapR1, self.mapR2, cv2.INTER_LINEAR)\n\n# Depth estimation from disparity:\ndisparity = abs(left_shoulder_x - right_shoulder_x)\nif disparity > 0:\n    depth_cm = (self.focal_px * self.baseline_cm) / disparity\n    depth_m  = depth_cm / 100.0"
+    }
+  ],
+  "category": "Calibration"
+}

@@ -1,0 +1,106 @@
+{
+  "id": "controls-map",
+  "title": "Controls Mapping",
+  "icon": "FiMousePointer",
+  "faIcon": "fa-solid fa-gamepad",
+  "category": "Operation",
+  "sections": [
+    {
+      "heading": "UI to Engine API Mapping",
+      "content": "The graphical interface routes user actions safely across thread boundaries to the background <code>VisionEngine</code> and <code>TacticalSerial</code> threads without causing UI freezes."
+    },
+    {
+      "heading": "Dashboard & Real-Time Controls",
+      "type": "table",
+      "headers": [
+        "UI Element",
+        "System API Called",
+        "Description"
+      ],
+      "rows": [
+        [
+          "START ENGINE",
+          "engine.start()",
+          "Initializes cameras, hardware, and begins the main QThread inference loop"
+        ],
+        [
+          "STOP ENGINE",
+          "engine.stop()",
+          "Safely signals the loop to exit, closes cameras, and sends servos home"
+        ],
+        [
+          "LASER BUTTON",
+          "engine.toggle_laser()",
+          "Delegates to TacticalSerial to toggle ESP32 GPIO 14. Intent is preserved across disconnects"
+        ],
+        [
+          "RECONNECT",
+          "engine.reconnect_hardware()",
+          "Bypasses the 5s serial auto-reconnect cooldown and forces an immediate attempt"
+        ],
+        [
+          "PAN / TILT TRIM",
+          "CONFIG['PAN_TRIM']",
+          "Applies a real-time global degree offset (±18.0°) to the final homography output"
+        ],
+        [
+          "AIM SMOOTHNESS",
+          "CONFIG['AIM_SMOOTHNESS']",
+          "Adjusts the Exponential Moving Average (EMA) alpha filter applied to servo commands to prevent jitter"
+        ]
+      ]
+    },
+    {
+      "heading": "Hardware Manual Controls (tab_hardware.py)",
+      "type": "table",
+      "headers": [
+        "UI Element",
+        "System API Called",
+        "Description"
+      ],
+      "rows": [
+        [
+          "Manual Pan / Tilt",
+          "hw.send_target()",
+          "Moves servos from 0° to 180° manually for testing wiring and range"
+        ],
+        [
+          "Send to Home",
+          "hw.send_target(90.0, 150.0)",
+          "Immediately sends servos to the safe home position"
+        ],
+        [
+          "Sweep Test",
+          "Internal loop",
+          "Automatically sweeps pan from 0° to 180° and back to verify full range capability"
+        ]
+      ]
+    },
+    {
+      "heading": "Calibration Controls",
+      "type": "table",
+      "headers": [
+        "UI Element",
+        "System API Called",
+        "Description"
+      ],
+      "rows": [
+        [
+          "CAPTURE PAIR",
+          "worker.image_points.append()",
+          "Saves valid chessboard corner detections to memory for stereo processing"
+        ],
+        [
+          "RUN CALIBRATION",
+          "worker.start()",
+          "Executes cv2.stereoCalibrate() in the background PythonCalibWorker thread"
+        ],
+        [
+          "COMPUTE ALIGNMENT",
+          "CalibrationMath.calculate_homography()",
+          "Computes the RANSAC 3x3 homography matrix from collected pixel-to-angle points"
+        ]
+      ]
+    }
+  ]
+}

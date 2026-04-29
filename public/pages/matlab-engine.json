@@ -1,0 +1,160 @@
+{
+  "id": "matlab-engine",
+  "title": "MATLAB Engine",
+  "icon": "🔴",
+  "faIcon": "fa-solid fa-flask",
+  "sections": [
+    {
+      "heading": "MATLAB Engine Overview",
+      "content": "The MATLAB Engine tab (<code>tab_matlab.py</code>) provides an optional high-precision stereo calibration pathway using MATLAB's Computer Vision Toolbox. MATLAB's calibration algorithms offer additional outlier rejection, tangential distortion modeling, and a visual diagnostic interface not available in the Python path. The tab launches a MATLAB session from within NEXUS, controls the Stereo Camera Calibrator App, and exports the result as a <code>.mat</code> file that can then be converted to a usable <code>.npz</code> via the DATA BRIDGE tab."
+    },
+    {
+      "heading": "When to Use MATLAB Calibration",
+      "content": "The Python calibration tab (<code>tab_pycalib.py</code>) is sufficient for most use cases. Use the MATLAB path when:",
+      "list": [
+        "<strong>Maximum precision required:</strong> MATLAB's calibration engine applies stronger outlier rejection and uses full rational distortion model (up to 3 radial + 2 tangential coefficients)",
+        "<strong>RMS > 0.5 px from Python calibration:</strong> MATLAB's visual diagnostics can identify and reject problematic image pairs",
+        "<strong>Existing MATLAB workflow:</strong> Your lab already uses MATLAB for calibration and you want to import existing <code>.mat</code> calibration files",
+        "<strong>Debugging distortion:</strong> MATLAB shows per-image and per-point reprojection error plots that help diagnose systematic problems"
+      ]
+    },
+    {
+      "heading": "Prerequisites",
+      "type": "alert",
+      "alertType": "warning",
+      "alertContent": "<strong>MATLAB requirements:</strong><br>• MATLAB R2020a or later installed on the same PC as NEXUS<br>• Computer Vision Toolbox add-on installed (check via MATLAB Add-On Explorer)<br>• Python MATLAB Engine API installed: run <code>pip install matlabengine</code> — the version must match your MATLAB release exactly<br><br>If MATLAB is not installed, skip this tab and use PY CALIBRATION instead."
+    },
+    {
+      "heading": "Checking MATLAB Engine Installation",
+      "type": "code",
+      "language": "python",
+      "code": "# Verify MATLAB engine is importable:\nimport matlab.engine\nprint(\"MATLAB Engine: OK\")\n\n# If this throws ImportError:\n# 1. Find your MATLAB installation: e.g. C:\\Program Files\\MATLAB\\R2023b\n# 2. In a CMD with admin rights, run:\n#    cd \"C:\\Program Files\\MATLAB\\R2023b\\extern\\engines\\python\"\n#    python setup.py install\n#\n# Then re-run the import check.\n\n# To list available MATLAB sessions:\nnames = matlab.engine.find_matlab()\nprint(f\"Running MATLAB sessions: {names}\")\n# Output: ('MATLAB_7320',) if MATLAB is already open\n# Output: () if no MATLAB session is running"
+    },
+    {
+      "heading": "MATLAB Engine Tab Workflow",
+      "type": "steps",
+      "steps": [
+        "Ensure MATLAB is installed with the Computer Vision Toolbox",
+        "Go to the <strong>🔴 MATLAB ENGINE</strong> tab",
+        "Click <strong>START MATLAB ENGINE</strong> — this launches a MATLAB session in the background (may take 20–40 seconds on first launch)",
+        "The status indicator turns green: <strong>MATLAB: CONNECTED</strong>",
+        "Click <strong>OPEN STEREO CALIBRATOR</strong> — this runs <code>stereoCameraCalibrator</code> inside the MATLAB session",
+        "In the MATLAB Stereo Camera Calibrator App: load your left and right image folders, set the square size, and run calibration",
+        "When satisfied with the results, click <strong>Export</strong> in the MATLAB app → choose <strong>Export Camera Parameters</strong> → save as a <code>.mat</code> file",
+        "Back in NEXUS, click <strong>STOP MATLAB ENGINE</strong> to cleanly shut down the MATLAB session",
+        "Go to the <strong>🌐 DATA BRIDGE</strong> tab to convert the exported <code>.mat</code> file to <code>stereo_calibration_bridge.npz</code>"
+      ]
+    },
+    {
+      "heading": "Starting the MATLAB Engine",
+      "type": "code",
+      "language": "python",
+      "code": "# From tab_matlab.py — engine start handler\nimport matlab.engine\n\nclass MatlabEngineTab(QWidget):\n    def start_engine(self):\n        self.status_label.setText(\"Starting MATLAB Engine...\")\n        self.start_btn.setEnabled(False)\n\n        # Run in background thread to avoid UI freeze\n        worker = MatlabStartWorker()\n        worker.engine_ready.connect(self.on_engine_ready)\n        worker.error.connect(self.on_engine_error)\n        worker.start()\n\nclass MatlabStartWorker(QThread):\n    engine_ready = pyqtSignal(object)  # matlab.engine instance\n    error        = pyqtSignal(str)\n\n    def run(self):\n        try:\n            # Connect to existing MATLAB session if available,\n            # otherwise start a new one:\n            existing = matlab.engine.find_matlab()\n            if existing:\n                eng = matlab.engine.connect_matlab(existing[0])\n            else:\n                eng = matlab.engine.start_matlab()\n            self.engine_ready.emit(eng)\n        except Exception as e:\n            self.error.emit(str(e))"
+    },
+    {
+      "heading": "Opening the Stereo Camera Calibrator",
+      "type": "code",
+      "language": "python",
+      "code": "# From tab_matlab.py — launch calibrator inside MATLAB session\ndef open_stereo_calibrator(self):\n    if self.eng is None:\n        self.log(\"MATLAB engine not running — start it first\")\n        return\n\n    # Run stereoCameraCalibrator in MATLAB\n    # This opens the GUI app inside the MATLAB window\n    self.eng.eval(\"stereoCameraCalibrator\", nargout=0)\n    self.log(\"Stereo Camera Calibrator opened in MATLAB\")\n    self.log(\"Load your left/right image folders, set square size, run calibration\")\n    self.log(\"When done: Export → Export Camera Parameters → save as .mat\")"
+    },
+    {
+      "heading": "Stereo Camera Calibrator App — Guide",
+      "content": "Inside MATLAB's Stereo Camera Calibrator App, follow these steps:",
+      "list": [
+        "<strong>Add Images:</strong> Click 'Add Images' → select your left camera folder → right camera folder. Images must have matching filenames (e.g., left_001.png ↔ right_001.png)",
+        "<strong>Set Square Size:</strong> Enter the exact square size in mm measured with calipers. This is the same value used in PY CALIBRATION",
+        "<strong>Detect:</strong> Click 'Detect' — MATLAB will find all chessboard corners and show coverage statistics",
+        "<strong>Calibrate:</strong> Click 'Calibrate' — MATLAB runs full stereo calibration and shows reprojection error plots",
+        "<strong>Remove Outliers:</strong> In the 'Mean Reprojection Error' bar chart, click high-error bars to select and remove outlier image pairs. Re-run calibration after removal",
+        "<strong>Check Accuracy:</strong> Target Mean Error < 0.5 px in MATLAB for best results in NEXUS",
+        "<strong>Export:</strong> Click 'Export Camera Parameters' → saves a <code>stereoParams</code> variable to a <code>.mat</code> file"
+      ]
+    },
+    {
+      "heading": "Recommended Image Set for MATLAB",
+      "type": "table",
+      "headers": [
+        "Requirement",
+        "Value",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Minimum image pairs",
+          "20 pairs",
+          "MATLAB recommends 30+ for best results"
+        ],
+        [
+          "Minimum image pairs after outlier removal",
+          "15 pairs",
+          "Below this, calibration becomes unstable"
+        ],
+        [
+          "Board coverage",
+          "All 4 quadrants + center",
+          "Same as Python path — spatial coverage is critical"
+        ],
+        [
+          "Image format",
+          "PNG or BMP",
+          "Avoid JPEG — compression artifacts can affect corner detection"
+        ],
+        [
+          "Naming convention",
+          "Matching filenames in L/R folders",
+          "e.g., img001.png in both left/ and right/ directories"
+        ]
+      ]
+    },
+    {
+      "heading": "Stopping the MATLAB Engine",
+      "type": "code",
+      "language": "python",
+      "code": "# From tab_matlab.py — clean shutdown\ndef stop_engine(self):\n    if self.eng is not None:\n        try:\n            self.eng.quit()  # Gracefully terminate MATLAB session\n        except Exception:\n            pass  # Already closed\n        finally:\n            self.eng = None\n            self.status_label.setText(\"MATLAB: DISCONNECTED\")\n            self.log(\"MATLAB Engine stopped\")"
+    },
+    {
+      "heading": "After Exporting from MATLAB",
+      "content": "Once you have saved the <code>.mat</code> file from MATLAB's Stereo Camera Calibrator, you must convert it to a Python-compatible <code>.npz</code> file before NEXUS can use it. This conversion is handled entirely by the <strong>DATA BRIDGE</strong> tab — NEXUS never reads <code>.mat</code> files directly from the engine.",
+      "type": "alert",
+      "alertType": "info",
+      "alertContent": "After conversion, go to <strong>Settings</strong> and update the <code>STEREO_FILE</code> path to point to <code>data/stereo_calibration_bridge.npz</code>. Then restart the engine to apply the MATLAB-precision calibration."
+    },
+    {
+      "heading": "Troubleshooting MATLAB Tab",
+      "type": "table",
+      "headers": [
+        "Problem",
+        "Cause",
+        "Solution"
+      ],
+      "rows": [
+        [
+          "'No module named matlab.engine'",
+          "matlabengine package not installed",
+          "Run: pip install matlabengine (must match MATLAB version)"
+        ],
+        [
+          "Engine start hangs > 60 seconds",
+          "MATLAB license server delay or first-launch JVM startup",
+          "Wait up to 2 minutes; kill and retry if it never completes"
+        ],
+        [
+          "'stereoCameraCalibrator not found'",
+          "Computer Vision Toolbox not installed",
+          "Open MATLAB → Add-Ons → search 'Computer Vision Toolbox' → Install"
+        ],
+        [
+          "Engine connects but calibrator doesn't open",
+          "MATLAB desktop is not in focus or is minimized",
+          "Bring MATLAB window to foreground after clicking Open Calibrator"
+        ],
+        [
+          "AttributeError on eng.quit()",
+          "MATLAB session already closed externally",
+          "Safe to ignore — set self.eng = None and update status label"
+        ]
+      ]
+    }
+  ],
+  "category": "Engineering"
+}

@@ -1,0 +1,102 @@
+{
+  "id": "safety",
+  "title": "Safety & Limitations",
+  "icon": "FiShield",
+  "faIcon": "fa-solid fa-triangle-exclamation",
+  "category": "Operation",
+  "sections": [
+    {
+      "heading": "Safety Overview",
+      "content": "NEXUS integrates moving mechanical servos, a live laser module, and heavy GPU-based computation. To prevent hardware damage and ensure safe operation, the system employs multiple layers of hardware, software, and electrical safety protocols. Strict adherence to these limits is required for production deployment."
+    },
+    {
+      "heading": "Critical Laser Safety",
+      "type": "alert",
+      "alertType": "error",
+      "alertContent": "<strong>EYE HAZARD:</strong> The system utilizes a 5mW 650nm Red dot laser. Never aim the laser module at human or animal eyes. Ensure testing is done against non-reflective surfaces to avoid hazardous specular reflections. Do not bypass the software toggle controls."
+    },
+    {
+      "heading": "Software Failsafes & Protections",
+      "type": "list",
+      "items": [
+        "<strong>Safety Auto-Timeout:</strong> If no target is detected for <code>SAFETY_TIMEOUT</code> seconds (default is 30 seconds), the system automatically disables the laser and returns to the home position.",
+        "<strong>Safe Resting Angle:</strong> The default home position is <code>HOME_PAN</code> = 90.0° and <code>HOME_TILT</code> = 150.0°. A tilt of 150° ensures the laser points slightly downward, acting as a safe resting angle.",
+        "<strong>Heartbeat Monitor:</strong> The ESP32 automatically emits a heartbeat signal every 2 seconds. If the background monitor thread detects silence for 6 seconds, it flags the connection as lost.",
+        "<strong>Disconnect Fallback:</strong> When a connection loss is detected, the servos are programmed to automatically return to the safe home position (Pan=90°, Tilt=150°).",
+        "<strong>Command Clamping:</strong> The math layer strictly clamps all computed servo angles to a minimum of 0.0° and a maximum of 180.0° to prevent mechanical binding and motor burnout."
+      ]
+    },
+    {
+      "heading": "Electrical & Hardware Safety",
+      "type": "list",
+      "items": [
+        "<strong>Servo Power Limit:</strong> MG996R servos can draw up to 2.5A at stall. Do NOT power the servos directly from the ESP32 5V pin, as this will destroy the board. You must use an external 5V 3A regulator or BEC.",
+        "<strong>Common Grounding:</strong> If servos run on external power, the ground (GND) of the external supply MUST be connected to the ESP32 GND to prevent floating voltages and erratic behavior.",
+        "<strong>Rate Limiting:</strong> The ESP32 firmware strictly enforces a 15ms minimum delay between commands (approx ~66Hz max). The TacticalSerial thread respects this to prevent buffer overflows.",
+        "<strong>Laser Voltage:</strong> The 5mW laser operates between 3.0V and 5.0V. Powering it from 3.3V is borderline; if the dot is faint or inconsistent, use 5V."
+      ]
+    },
+    {
+      "heading": "Stereo Vision Limitations",
+      "type": "table",
+      "headers": [
+        "Limitation",
+        "Cause",
+        "System Impact"
+      ],
+      "rows": [
+        [
+          "Depth Range (0.5–5m)",
+          "Baseline configuration (6–12 cm separation)",
+          "Outside this range, disparity becomes too small or too large, rendering depth inaccurate."
+        ],
+        [
+          "Low Disparity",
+          "Cameras mounted too close together (< 4cm)",
+          "Depth accuracy degrades significantly at longer ranges."
+        ],
+        [
+          "Mount Flexing",
+          "Non-rigid camera mounting bar",
+          "Any physical flex between the cameras instantly invalidates the stereo calibration."
+        ],
+        [
+          "Toe-in Angles",
+          "Cameras angled towards each other",
+          "Cameras must be perfectly parallel; toe-in cannot be fully corrected by calibration."
+        ]
+      ]
+    },
+    {
+      "heading": "AI & Inference Limitations",
+      "type": "table",
+      "headers": [
+        "Limitation",
+        "Cause",
+        "System Impact"
+      ],
+      "rows": [
+        [
+          "Edge Distortion",
+          "Homography extrapolation",
+          "Laser targeting accuracy is worst at frame edges if calibration points are sparse."
+        ],
+        [
+          "High VRAM Usage",
+          "yolo11x-pose requires ~600 MB VRAM",
+          "On low-end GPUs, this causes out-of-memory crashes unless switched to yolo11s/yolo11n."
+        ],
+        [
+          "CPU Bottleneck",
+          "Using PyTorch (.pt) weights without TensorRT",
+          "Inference drops to ~2–5 FPS, causing extreme targeting lag."
+        ],
+        [
+          "USB Bandwidth",
+          "Two cameras on a single USB controller",
+          "Frame capture latency increases significantly, or cameras fail to open simultaneously."
+        ]
+      ]
+    }
+  ]
+}

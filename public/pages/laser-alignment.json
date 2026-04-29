@@ -1,0 +1,188 @@
+{
+  "id": "laser-alignment",
+  "title": "Laser Alignment",
+  "icon": "🔵",
+  "faIcon": "fa-solid fa-crosshairs",
+  "sections": [
+    {
+      "heading": "Laser Alignment Overview",
+      "content": "The Laser Alignment tab (<code>tab_laser.py</code>) is where you calibrate the mapping between camera pixels and physical servo angles. By clicking on the laser dot in the camera feed and recording the corresponding servo angles, you build a set of correspondence points. From these, NEXUS computes a <strong>homography matrix H</strong> using RANSAC that can accurately transform any detected target pixel coordinate into the exact pan/tilt command needed to aim the laser at that target."
+    },
+    {
+      "heading": "Why Laser Alignment is Required",
+      "content": "The relationship between \"where a pixel appears in the camera\" and \"what servo angle points the laser at that pixel\" is not a simple linear formula. Lens distortion, camera mounting angle, servo mechanical offsets, and physical geometry all contribute non-linear effects. Homography captures all of these effects as a single 3×3 matrix that maps any pixel to the correct servo angle — including regions between calibration points.",
+      "list": [
+        "<strong>Without laser alignment:</strong> The engine uses a raw linear pixel-to-angle approximation that can be off by 10–30° depending on target position in the frame",
+        "<strong>With laser alignment:</strong> The engine uses the homography H for sub-degree accuracy across the entire camera field of view",
+        "<strong>Complementary to stereo calibration:</strong> Stereo calibration gives depth; laser alignment gives direction. Both are required for a fully calibrated system"
+      ]
+    },
+    {
+      "heading": "Alignment Workflow",
+      "type": "steps",
+      "steps": [
+        "Go to the <strong>🔵 LASER ALIGNMENT</strong> tab",
+        "Ensure ESP32 is connected — check HW status (must be green / LINKED)",
+        "Click <strong>START PREVIEW</strong> — the left camera feed appears in the panel",
+        "Enable the laser via the <strong>LASER ON</strong> button or the Hardware Control tab",
+        "Use the <strong>Manual Pan slider</strong> and <strong>Manual Tilt slider</strong> to steer the laser to a visible point on a flat surface (wall, target board)",
+        "When the laser dot is clearly visible and stable, <strong>click on the laser dot in the camera feed</strong> — this records pixel coordinates (cx, cy)",
+        "The current servo angles are automatically read from the ESP32 heartbeat/ACK and recorded as the corresponding (pan, tilt) pair",
+        "Move the laser to a new position (different area of the frame) and repeat",
+        "Collect at least <strong>12 correspondence points</strong> — 20+ recommended for best accuracy",
+        "Click <strong>COMPUTE ALIGNMENT</strong> to run <code>cv2.findHomography()</code> with RANSAC",
+        "Review the reprojection error — target <strong>< 2.0 px</strong>",
+        "Click <strong>SAVE ALIGNMENT</strong> to write <code>data/laser_alignment.npz</code>",
+        "Restart the engine (or click RECONNECT) for the new homography to take effect"
+      ]
+    },
+    {
+      "heading": "Correspondence Point Collection",
+      "content": "Each time you click on the laser dot in the camera feed, the system records one correspondence pair:",
+      "type": "code",
+      "language": "python",
+      "code": "# In tab_laser.py — click handler on TacticalVideoWidget\ndef on_video_click(self, x: int, y: int):\n    \"\"\"Called when user clicks on the camera feed.\"\"\"\n    # Get current servo angles from hardware link\n    current_pan, current_tilt = self.engine.hardware.get_current_angles()\n\n    # Record the correspondence\n    self.src_points.append([x, y])               # Pixel coordinate\n    self.dst_points.append([current_pan, current_tilt])  # Servo angles\n\n    # Visual feedback: draw a dot at the click position\n    self.point_overlay.append((x, y, current_pan, current_tilt))\n\n    # Update point count display\n    self.point_count_label.setText(\n        f\"Points: {len(self.src_points)} / 12 minimum\"\n    )\n    self.log(f\"Point {len(self.src_points)}: pixel=({x},{y}) → pan={current_pan:.1f}° tilt={current_tilt:.1f}°\")"
+    },
+    {
+      "heading": "Homography Computation",
+      "content": "Once you have 12+ points and click COMPUTE ALIGNMENT, the system calls:",
+      "type": "code",
+      "language": "python",
+      "code": "# From core/math_calib.py\nimport cv2, numpy as np\n\n@staticmethod\ndef calculate_homography(\n    src: np.ndarray,   # Shape (N,2) — pixel coords [cx, cy]\n    dst: np.ndarray    # Shape (N,2) — servo angles [pan, tilt]\n) -> np.ndarray:\n    \"\"\"\n    Compute a 3×3 homography matrix mapping pixel → servo angles.\n    Uses RANSAC to reject outlier points automatically.\n    \"\"\"\n    H, mask = cv2.findHomography(\n        src, dst,\n        method=cv2.RANSAC,\n        ransacReprojThreshold=5.0  # Reject points > 5px from predicted position\n    )\n    inlier_count = int(mask.sum())\n    print(f\"Homography computed: {inlier_count}/{len(src)} inliers\")\n    return H\n\n# Applying H during inference:\n@staticmethod\ndef apply_homography(px: float, py: float, H: np.ndarray) -> tuple:\n    point  = np.array([[[px, py]]], dtype=np.float32)\n    result = cv2.perspectiveTransform(point, H)\n    pan  = float(result[0][0][0])\n    tilt = float(result[0][0][1])\n    return pan, tilt"
+    },
+    {
+      "heading": "Coverage Strategy — Point Placement",
+      "content": "The spatial distribution of your calibration points directly determines accuracy across the frame. Poor coverage = large errors in uncovered regions.",
+      "type": "table",
+      "headers": [
+        "Zone",
+        "Min Points",
+        "Why It Matters"
+      ],
+      "rows": [
+        [
+          "Frame corners (all 4)",
+          "1 each = 4 total",
+          "Homography extrapolation is worst at edges — corners anchor the matrix"
+        ],
+        [
+          "Frame edges (midpoints)",
+          "1 each = 4 total",
+          "Prevents edge distortion between corners"
+        ],
+        [
+          "Frame center region",
+          "4–6 points",
+          "Most detections happen near center — higher density here improves precision"
+        ],
+        [
+          "Total minimum",
+          "12 points",
+          "Below 12, RANSAC may produce numerically unstable homography"
+        ],
+        [
+          "Recommended total",
+          "20–30 points",
+          "More points → better RANSAC inlier selection → lower reprojection error"
+        ]
+      ]
+    },
+    {
+      "heading": "Visual Coverage Map",
+      "type": "code",
+      "language": "text",
+      "code": "# Ideal 16-point distribution across a 1280×720 frame:\n#\n#  ×──────────×──────────×──────────×\n#  │  corner  │   edge   │   edge   │  ← row 1 (y ≈ 100px)\n#  ×──────────×──────────×──────────×\n#  │   edge   │  center  │  center  │  ← row 2 (y ≈ 300px)\n#  │          │  center  │  center  │  ← row 3 (y ≈ 420px)\n#  ×──────────×──────────×──────────×\n#  │  corner  │   edge   │  corner  │  ← row 4 (y ≈ 620px)\n#  ×──────────×──────────×──────────×\n#\n# × = calibration point\n# Horizontal coverage: ~100px, ~426px, ~853px, ~1180px\n# Vertical coverage:   ~100px, ~300px, ~420px, ~620px"
+    },
+    {
+      "heading": "Reprojection Error",
+      "content": "After computing the homography, NEXUS reports the mean reprojection error — the average pixel distance between where each calibration point actually is and where the computed H predicts it should be:",
+      "type": "table",
+      "headers": [
+        "Reprojection Error",
+        "Quality",
+        "Action"
+      ],
+      "rows": [
+        [
+          "< 1.0 px",
+          "🟢 Excellent",
+          "Proceed — sub-degree targeting accuracy expected"
+        ],
+        [
+          "1.0 — 2.5 px",
+          "🟡 Good",
+          "Acceptable for most use cases"
+        ],
+        [
+          "2.5 — 5.0 px",
+          "🟠 Fair",
+          "Consider adding more points, especially at frame edges"
+        ],
+        [
+          "> 5.0 px",
+          "🔴 Poor",
+          "Likely has outlier points or poor coverage — delete outliers and recompute"
+        ]
+      ]
+    },
+    {
+      "heading": "What Gets Saved",
+      "type": "code",
+      "language": "python",
+      "code": "# laser_alignment.npz contents (saved to data/ folder)\nnp.savez(\n    'data/laser_alignment.npz',\n    H                 = H,                 # (3,3) float64 — the homography matrix\n    src_points        = src_arr,            # (N,2) — pixel coords used\n    dst_points        = dst_arr,            # (N,2) — servo angles used\n    point_count       = len(src_points),    # int   — number of correspondence pairs\n    reprojection_error= reproj_err          # float — mean pixel reprojection error\n)\n\n# To inspect saved alignment:\nimport numpy as np\ndata = np.load('data/laser_alignment.npz')\nprint(\"Homography H:\")\nprint(data['H'])\nprint(f\"Built from {data['point_count']} points\")\nprint(f\"Reprojection error: {data['reprojection_error']:.2f} px\")"
+    },
+    {
+      "heading": "Delete Individual Points",
+      "content": "If you accidentally click in the wrong position, you can remove individual correspondence points before computing the homography. The Laser Alignment tab shows a list of all recorded points — select any entry and click <strong>DELETE POINT</strong> to remove it. Always review the list before clicking COMPUTE ALIGNMENT.",
+      "type": "alert",
+      "alertType": "info",
+      "alertContent": "RANSAC automatically rejects outlier points during computation, so a few bad clicks won't necessarily ruin the result. However, deliberately removing obvious outliers before computing always improves the final matrix quality."
+    },
+    {
+      "heading": "Trim vs Full Realignment",
+      "content": "After laser alignment, small residual errors can be corrected with the Trim sliders in the Dashboard. However, Trim is a global offset — it shifts every servo command by a fixed amount. It cannot correct non-linear errors across the frame.",
+      "type": "table",
+      "headers": [
+        "Situation",
+        "Solution"
+      ],
+      "rows": [
+        [
+          "Laser off by < 2° consistently across all positions",
+          "Use PAN_TRIM / TILT_TRIM sliders in Dashboard (±18° range)"
+        ],
+        [
+          "Laser accurate at center but drifts at edges",
+          "Redo full laser alignment — poor coverage or few points"
+        ],
+        [
+          "Laser consistently off by > 5° everywhere",
+          "Redo full laser alignment — camera or mount was moved"
+        ],
+        [
+          "Trim at maximum (±18°) and still not correcting",
+          "Redo full laser alignment — large systematic error in H"
+        ]
+      ]
+    },
+    {
+      "heading": "When to Redo Laser Alignment",
+      "list": [
+        "The pan/tilt assembly was physically repositioned or bumped relative to the cameras",
+        "Servo endpoint angles were changed in the ESP32 firmware",
+        "The laser module was replaced or repositioned on the mount",
+        "Either servo was replaced",
+        "The camera mounting position changed (even slight shifts affect the pixel-to-angle mapping)",
+        "Trim sliders are maxed out and the laser is still not accurate"
+      ]
+    },
+    {
+      "heading": "Integration with VisionEngine",
+      "content": "Once saved, the laser alignment file is loaded automatically by the engine at startup via <code>setup_matrices()</code>:",
+      "type": "code",
+      "language": "python",
+      "code": "# In vision_engine.py — setup_matrices()\ntry:\n    laser_data = np.load(CONFIG['LASER_FILE'])\n    self.H = laser_data['H']\n    self.has_laser_cal = True\n    logger.info(f\"Laser homography loaded — \"\n                f\"{int(laser_data['point_count'])} points, \"\n                f\"reproj_error={laser_data['reprojection_error']:.1f}px\")\nexcept FileNotFoundError:\n    self.H = None\n    self.has_laser_cal = False\n    logger.warning(\"No laser_alignment.npz found — using raw pixel-to-angle mapping\")\n\n# Each frame: pixel coords → servo angles\nif self.H is not None:\n    pan, tilt = CalibrationMath.apply_homography(smooth_cx, smooth_cy, self.H)\nelse:\n    # Fallback: linear interpolation (much less accurate)\n    pan  = (smooth_cx / frame_width)  * 180.0\n    tilt = (smooth_cy / frame_height) * 180.0"
+    }
+  ],
+  "category": "Calibration"
+}

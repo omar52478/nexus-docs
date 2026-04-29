@@ -1,0 +1,329 @@
+{
+  "id": "settings",
+  "title": "Settings",
+  "icon": "⚙️",
+  "faIcon": "fa-solid fa-sliders",
+  "sections": [
+    {
+      "heading": "Settings Overview",
+      "content": "The Settings tab (<code>tab_settings.py</code>) is the central configuration panel for NEXUS. All values are persisted immediately to <code>settings.json</code> in the project root via <code>save_config()</code> whenever you click Save. The engine reads CONFIG on startup and on each frame — most parameters take effect on the next engine start, while some (like trim and smoothness) are hot-applied in real time via the Dashboard sliders."
+    },
+    {
+      "heading": "Camera Configuration",
+      "type": "table",
+      "headers": [
+        "Field",
+        "Config Key",
+        "Type",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "Left Camera Index",
+          "CAM_L_IDX",
+          "int",
+          "1",
+          "OpenCV VideoCapture index for the left (primary) camera. Used for AI inference and as the reference frame for homography."
+        ],
+        [
+          "Right Camera Index",
+          "CAM_R_IDX",
+          "int",
+          "4",
+          "OpenCV VideoCapture index for the right (stereo) camera. Used only for depth estimation via disparity."
+        ],
+        [
+          "Resolution Width",
+          "RESOLUTION[0]",
+          "int",
+          "1280",
+          "Camera capture width in pixels. Affects AI accuracy (higher = better), FPS (higher = slower), and VRAM usage."
+        ],
+        [
+          "Resolution Height",
+          "RESOLUTION[1]",
+          "int",
+          "720",
+          "Camera capture height in pixels. Should match the camera's native aspect ratio for best results."
+        ]
+      ]
+    },
+    {
+      "heading": "Finding the Right Camera Index",
+      "content": "Camera indices are assigned by the OS and can vary after reboots or USB reconnects. Use this script to discover all available camera indices:",
+      "type": "code",
+      "language": "python",
+      "code": "import cv2\n\nprint(\"Scanning camera indices 0–9...\")\nfor i in range(10):\n    cap = cv2.VideoCapture(i)\n    if cap.isOpened():\n        ret, frame = cap.read()\n        shape = frame.shape if ret else 'no frame'\n        print(f\"  Index {i}: ✅ Available — {shape}\")\n        cap.release()\n    else:\n        print(f\"  Index {i}: ❌ Not available\")\n\n# Example output:\n# Index 0: ✅ Available — (480, 640, 3)   ← Built-in laptop cam\n# Index 1: ✅ Available — (720, 1280, 3)  ← Left USB camera\n# Index 4: ✅ Available — (720, 1280, 3)  ← Right USB camera"
+    },
+    {
+      "heading": "AI Model Configuration",
+      "type": "table",
+      "headers": [
+        "Field",
+        "Config Key",
+        "Type",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "Model Path",
+          "MODEL_PATH",
+          "str",
+          "models/yolo11x-pose.engine",
+          "Relative path from project root to the YOLO model file. Supports .engine (TensorRT — fast) and .pt (PyTorch — portable but slower)."
+        ],
+        [
+          "Confidence Threshold",
+          "CONFIDENCE",
+          "float",
+          "0.50",
+          "Minimum AI detection confidence score (0.1–0.95). Detections below this threshold are discarded. Lower = more detections but more false positives."
+        ],
+        [
+          "IOU Threshold",
+          "IOU_THRESHOLD",
+          "float",
+          "0.25",
+          "Minimum IoU overlap (0.1–0.9) to maintain a locked target across frames. Lower = easier to maintain lock but may drift to nearby people."
+        ],
+        [
+          "Max Y Tolerance",
+          "MAX_Y_TOLERANCE",
+          "int",
+          "60",
+          "Maximum vertical pixel jump (in pixels) allowed between frames. Jumps larger than this reset the lock. Prevents locking on flickering detections."
+        ]
+      ]
+    },
+    {
+      "heading": "Model Performance Reference",
+      "type": "table",
+      "headers": [
+        "Model File",
+        "Format",
+        "FPS (RTX 3080)",
+        "VRAM",
+        "Task",
+        "Best For"
+      ],
+      "rows": [
+        [
+          "yolo11x-pose.engine",
+          "TensorRT FP16",
+          "~15 FPS",
+          "~600 MB",
+          "Pose",
+          "Maximum accuracy — production use"
+        ],
+        [
+          "yolo11m-pose.engine",
+          "TensorRT FP16",
+          "~25 FPS",
+          "~380 MB",
+          "Pose",
+          "Balanced — recommended default"
+        ],
+        [
+          "yolo11s-pose.engine",
+          "TensorRT FP16",
+          "~40 FPS",
+          "~220 MB",
+          "Pose",
+          "Fast tracking, slightly less accurate"
+        ],
+        [
+          "yolo11n-pose.engine",
+          "TensorRT FP16",
+          "~60 FPS",
+          "~120 MB",
+          "Pose",
+          "Maximum speed, low-end GPUs"
+        ],
+        [
+          "yolo11x-pose.pt",
+          "PyTorch",
+          "~3 FPS",
+          "~800 MB",
+          "Pose",
+          "Fallback — no TensorRT required"
+        ],
+        [
+          "yolo11x.engine",
+          "TensorRT FP16",
+          "~18 FPS",
+          "~550 MB",
+          "Detect",
+          "Object detection only — no keypoints"
+        ]
+      ]
+    },
+    {
+      "heading": "Serial / Hardware Configuration",
+      "type": "table",
+      "headers": [
+        "Field",
+        "Config Key",
+        "Type",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "Serial Port",
+          "SERIAL_PORT",
+          "str",
+          "COM8",
+          "COM port for the ESP32 DevKit. Find this in Device Manager → Ports (COM & LPT) → USB-SERIAL CH340 (COMx)."
+        ],
+        [
+          "Baud Rate",
+          "BAUD_RATE",
+          "int",
+          "115200",
+          "Serial communication speed. Must match the firmware setting in nexus_guardian_v2.2.ino. Do not change unless you also modify the firmware."
+        ],
+        [
+          "Home Pan",
+          "HOME_PAN",
+          "float",
+          "90.0",
+          "Pan angle (°) sent to servos on engine startup and when safety timeout triggers. 90° = center position."
+        ],
+        [
+          "Home Tilt",
+          "HOME_TILT",
+          "float",
+          "150.0",
+          "Tilt angle (°) sent to servos on engine startup and safety timeout. 150° = slightly downward pointing — safe resting angle."
+        ],
+        [
+          "Safety Timeout",
+          "SAFETY_TIMEOUT",
+          "int",
+          "30",
+          "Seconds with no target detection before the system returns to home position and disables the laser. Prevents indefinite aiming at last known position."
+        ]
+      ]
+    },
+    {
+      "heading": "Calibration File Paths",
+      "type": "table",
+      "headers": [
+        "Field",
+        "Config Key",
+        "Default",
+        "Description"
+      ],
+      "rows": [
+        [
+          "Stereo Calibration File",
+          "STEREO_FILE",
+          "data/stereo_calibration_py.npz",
+          "Path to the stereo camera calibration .npz archive. Used by the engine for stereo rectification and depth estimation."
+        ],
+        [
+          "Laser Alignment File",
+          "LASER_FILE",
+          "data/laser_alignment.npz",
+          "Path to the laser homography matrix .npz archive. Used to convert pixel coordinates to servo pan/tilt angles."
+        ]
+      ]
+    },
+    {
+      "heading": "Calibration File Tips",
+      "content": "Both calibration files are optional — the engine degrades gracefully if they are missing:",
+      "list": [
+        "If both files are present → <strong>✅ FULLY CALIBRATED</strong> mode: full depth estimation + accurate servo targeting",
+        "If only STEREO_FILE is present → <strong>⚠️ STEREO ONLY</strong>: depth works but servo angles are raw pixel estimates",
+        "If neither file is present → <strong>⚠️ UNCALIBRATED RAW</strong>: no depth, approximate targeting only",
+        "Use the <strong>PY CALIBRATION</strong> tab to generate <code>stereo_calibration_py.npz</code>",
+        "Use the <strong>LASER ALIGNMENT</strong> tab to generate <code>laser_alignment.npz</code>",
+        "Optionally use <strong>DATA BRIDGE</strong> to convert a MATLAB .mat calibration to <code>stereo_calibration_bridge.npz</code>"
+      ]
+    },
+    {
+      "heading": "Targeting Fine-Tuning Parameters",
+      "type": "table",
+      "headers": [
+        "Field",
+        "Config Key",
+        "Range",
+        "Default",
+        "Effect"
+      ],
+      "rows": [
+        [
+          "Aim Offset",
+          "AIM_OFFSET",
+          "0–100 px",
+          "0",
+          "Pixels below shoulder midpoint to place the final aim dot. 0=shoulders, ~50=chest, ~100=stomach."
+        ],
+        [
+          "Aim Smoothness",
+          "AIM_SMOOTHNESS",
+          "0–100",
+          "50",
+          "EMA smoothing on servo output. 0=raw snap, 100=ultra-smooth but slow. Best anti-jitter: 40–60."
+        ],
+        [
+          "Aim Filter",
+          "AIM_FILTER",
+          "0–100",
+          "50",
+          "Kalman filter intensity on AI detections. 0=trust raw detections fully, 100=heavy smoothing."
+        ],
+        [
+          "Smoothing (Depth)",
+          "SMOOTHING",
+          "0.0–1.0",
+          "0.2",
+          "EMA alpha for stereo depth smoothing. 0.2 = 20% new reading blended with 80% previous depth."
+        ],
+        [
+          "Pan Trim",
+          "PAN_TRIM",
+          "−18.0–+18.0°",
+          "0.0",
+          "Global pan degree offset added to every servo command after homography. Corrects small systematic misalignment."
+        ],
+        [
+          "Tilt Trim",
+          "TILT_TRIM",
+          "−18.0–+18.0°",
+          "0.0",
+          "Global tilt degree offset added to every servo command after homography."
+        ]
+      ]
+    },
+    {
+      "heading": "How save_config() Works",
+      "content": "Every Settings change is immediately written to disk. The engine reads CONFIG dynamically — changes to trim and smoothness take effect on the next frame without restart:",
+      "type": "code",
+      "language": "python",
+      "code": "# From config.py\nimport json, os\n\nBASE_DIR = os.path.dirname(os.path.abspath(__file__))\nSETTINGS_FILE = os.path.join(BASE_DIR, 'settings.json')\n\nCONFIG = {}  # Global dict used by all modules\n\ndef load_config() -> dict:\n    \"\"\"Load settings.json. Creates defaults if file is missing.\"\"\"\n    if not os.path.exists(SETTINGS_FILE):\n        CONFIG.update(DEFAULT_CONFIG)\n        save_config(CONFIG)\n        return CONFIG\n    with open(SETTINGS_FILE, 'r') as f:\n        CONFIG.update(json.load(f))\n    return CONFIG\n\ndef save_config(cfg: dict) -> None:\n    \"\"\"Write the current CONFIG dict to settings.json.\"\"\"\n    with open(SETTINGS_FILE, 'w') as f:\n        json.dump(cfg, f, indent=2)\n\n# Example: update a value from any module\nfrom config import CONFIG, save_config\nCONFIG['SERIAL_PORT'] = 'COM5'\nsave_config(CONFIG)  # Immediately written to settings.json"
+    },
+    {
+      "heading": "Complete settings.json Schema",
+      "type": "code",
+      "language": "json",
+      "code": "{\n  \"MODEL_PATH\":       \"models/yolo11x-pose.engine\",\n  \"CAM_L_IDX\":        1,\n  \"CAM_R_IDX\":        4,\n  \"RESOLUTION\":       [1280, 720],\n  \"SERIAL_PORT\":      \"COM8\",\n  \"BAUD_RATE\":        115200,\n  \"CONFIDENCE\":       0.5,\n  \"IOU_THRESHOLD\":    0.25,\n  \"SMOOTHING\":        0.2,\n  \"MAX_Y_TOLERANCE\":  60,\n  \"HOME_PAN\":         90.0,\n  \"HOME_TILT\":        150.0,\n  \"PAN_TRIM\":         0.0,\n  \"TILT_TRIM\":        0.0,\n  \"AIM_OFFSET\":       0,\n  \"AIM_SMOOTHNESS\":   50,\n  \"AIM_FILTER\":       50,\n  \"SAFETY_TIMEOUT\":   30,\n  \"STEREO_FILE\":      \"data/stereo_calibration_py.npz\",\n  \"LASER_FILE\":       \"data/laser_alignment.npz\"\n}"
+    },
+    {
+      "heading": "Reset to Defaults",
+      "content": "If Settings get into a broken state, delete <code>settings.json</code> from the project root and restart NEXUS. The file is auto-regenerated with all defaults:",
+      "type": "code",
+      "language": "bash",
+      "code": "# Windows CMD:\ndel settings.json\npython main.py\n\n# PowerShell:\nRemove-Item settings.json\npython main.py\n\n# After restart: settings.json is auto-created with safe defaults\n# You only need to re-enter: CAM_L_IDX, CAM_R_IDX, SERIAL_PORT"
+    },
+    {
+      "heading": "Settings After First Launch",
+      "type": "alert",
+      "alertType": "warning",
+      "alertContent": "<strong>Three settings MUST be configured before starting the engine:</strong><br>1. <strong>CAM_L_IDX</strong> — left camera USB index (use the camera diagnostic script to find it)<br>2. <strong>CAM_R_IDX</strong> — right camera USB index (must be different from left)<br>3. <strong>SERIAL_PORT</strong> — ESP32 COM port from Device Manager<br><br>The engine will fail to open cameras or connect to hardware if these are wrong."
+    }
+  ],
+  "category": "Configuration"
+}

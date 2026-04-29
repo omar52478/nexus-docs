@@ -1,0 +1,276 @@
+{
+  "id": "dashboard",
+  "title": "Dashboard Controls",
+  "icon": "📊",
+  "faIcon": "fa-solid fa-gauge-high",
+  "sections": [
+    {
+      "heading": "Dashboard Overview",
+      "content": "The Dashboard (<code>tab_dashboard.py</code>) is the primary command center for NEXUS. It provides a live stereo video feed, real-time telemetry from the VisionEngine, hardware status, engine controls, and live-tuning sliders — all without needing to restart the engine. It is built as a <code>QWidget</code> that subscribes to two signals from the <code>VisionEngine QThread</code>: <code>frame_ready(np.ndarray)</code> for video and <code>telemetry_ready(dict)</code> for metrics."
+    },
+    {
+      "heading": "Layout Structure",
+      "content": "The Dashboard is split into two panels using a <code>QHBoxLayout</code>:",
+      "list": [
+        "<strong>Left Panel (stretch=3):</strong> The <code>TacticalVideoWidget</code> — displays the combined stereo frame with bounding boxes, skeleton overlays, and tracking markers in real time.",
+        "<strong>Right Sidebar (fixed 360px):</strong> A scrollable <code>QScrollArea</code> containing the NEXUS CORE control panel — status, metrics, sliders, and buttons."
+      ]
+    },
+    {
+      "heading": "Telemetry Metrics Panel",
+      "content": "The metrics grid shows 7 live indicators, each updated on every <code>telemetry_ready</code> signal emission:",
+      "type": "table",
+      "headers": [
+        "Label",
+        "Key in dict",
+        "Unit",
+        "Optimal Range",
+        "Color"
+      ],
+      "rows": [
+        [
+          "⚡ SYS FPS",
+          "fps",
+          "frames/sec",
+          "> 15 FPS",
+          "#00e676 (green)"
+        ],
+        [
+          "📡 LATENCY",
+          "latency",
+          "ms",
+          "< 50 ms",
+          "#facc15 (yellow)"
+        ],
+        [
+          "↔️ PAN AXIS",
+          "pan",
+          "degrees (°)",
+          "0° — 180°",
+          "#00e5ff (cyan)"
+        ],
+        [
+          "↕️ TILT AXIS",
+          "tilt",
+          "degrees (°)",
+          "0° — 180°",
+          "#a855f7 (purple)"
+        ],
+        [
+          "🧠 AI CONF",
+          "conf × 100",
+          "%",
+          "> 60%",
+          "#f43f5e (red)"
+        ],
+        [
+          "🎯 EST DEPTH",
+          "depth",
+          "meters (m)",
+          "0.5 — 10 m",
+          "#3b82f6 (blue)"
+        ],
+        [
+          "⚙️ VISION MODE",
+          "calibration_mode",
+          "string",
+          "FULLY CALIBRATED",
+          "#facc15 (yellow)"
+        ]
+      ]
+    },
+    {
+      "heading": "System Info Labels",
+      "content": "Four read-only labels show the current engine configuration. They are updated each time you switch to the Dashboard tab via <code>showEvent()</code>:",
+      "type": "table",
+      "headers": [
+        "Label",
+        "Config Key",
+        "Example Value"
+      ],
+      "rows": [
+        [
+          "📏 CALIBRATION FILE",
+          "STEREO_FILE",
+          "stereo_calibration_py.npz"
+        ],
+        [
+          "🧠 AI MODEL",
+          "MODEL_PATH",
+          "YOLO11X-POSE.ENGINE"
+        ],
+        [
+          "🎯 AI TASK",
+          "MODEL_PATH (parsed)",
+          "POSE ESTIMATION or OBJECT DETECTION"
+        ],
+        [
+          "📺 RESOLUTION",
+          "RESOLUTION",
+          "1280×720 px"
+        ]
+      ]
+    },
+    {
+      "heading": "Target Status Indicator",
+      "content": "A large status badge changes dynamically based on the tracking state received in telemetry:",
+      "type": "table",
+      "headers": [
+        "Status Text",
+        "Background Color",
+        "Condition"
+      ],
+      "rows": [
+        [
+          "🎯 TARGET LOCKED",
+          "#ef4444 (red)",
+          "data['status'] == 'LOCKED' — target IoU match confirmed"
+        ],
+        [
+          "👁️ SCANNING",
+          "#00e676 (green)",
+          "Engine running but no target locked yet"
+        ],
+        [
+          "SYSTEM OFFLINE",
+          "Dark card",
+          "Engine is stopped — default state on launch"
+        ]
+      ]
+    },
+    {
+      "heading": "Hardware Status (HW) Indicator",
+      "content": "A compact label below the metrics shows the real-time ESP32 connection status. It is updated every telemetry cycle by polling <code>engine.hardware.is_connected()</code>:",
+      "type": "table",
+      "headers": [
+        "Label Text",
+        "Color",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "⚡ HW: LINKED (COM8)",
+          "#00e676 (green)",
+          "ESP32 is connected and responding"
+        ],
+        [
+          "⚡ HW: DISCONNECTED",
+          "#ef4444 (red)",
+          "Connection lost — auto-reconnect may be retrying"
+        ],
+        [
+          "⚡ HW: CONNECTING...",
+          "#facc15 (yellow)",
+          "User clicked RECONNECT, attempting to link"
+        ],
+        [
+          "⚡ HW: FAILED",
+          "#ef4444 (red)",
+          "Manual reconnect attempt failed"
+        ]
+      ]
+    },
+    {
+      "heading": "Aiming Control Sliders",
+      "content": "Three sliders allow real-time tuning of the targeting pipeline. Changes take effect immediately on the running engine without a restart. Values are saved to <code>settings.json</code> on each change.",
+      "list": [
+        "<strong>OFFSET (0–100 px):</strong> Number of pixels below the shoulder midpoint keypoints to place the final aim dot. 0 = aim at shoulder center, 50 = aim at chest center, 100 = aim at stomach level. Stored as <code>CONFIG['AIM_OFFSET']</code>.",
+        "<strong>SMOOTHNESS (0–100%):</strong> Controls Exponential Moving Average (EMA) output smoothing on servo commands. 0 = raw snap to every detection, 100 = ultra-smooth but slow to follow fast movement. Best value for reducing servo jitter: 40–60. Stored as <code>CONFIG['AIM_SMOOTHNESS']</code>.",
+        "<strong>FILTER (0–100%):</strong> Controls Kalman filter measurement trust. 0 = trust raw AI bounding box coordinates entirely, 100 = heavy filtering (useful in noisy/crowded environments). Stored as <code>CONFIG['AIM_FILTER']</code>."
+      ]
+    },
+    {
+      "heading": "Trim Controls",
+      "content": "Pan Trim and Tilt Trim sliders apply a global degree offset to every servo command. Range: −18.0° to +18.0° in 0.1° steps (slider stores value × 10 as integer for precision). Use after laser calibration to fix small systematic misalignment. Values are synced from <code>CONFIG</code> whenever they change (including changes made from the Hardware tab or auto-refine).",
+      "type": "code",
+      "language": "python",
+      "code": "# Applied in hardware_link.py — TacticalSerial.send_target()\nfinal_pan  = pan  + CONFIG['PAN_TRIM']   # e.g., 90.0 + (-2.5) = 87.5°\nfinal_tilt = tilt + CONFIG['TILT_TRIM']  # e.g., 150.0 + 1.0  = 151.0°\n\n# How Dashboard reads back the slider value:\npan_trim_value  = self.dash_pan_trim.value()  / 10.0  # int 25 → 2.5°\ntilt_trim_value = self.dash_tilt_trim.value() / 10.0"
+    },
+    {
+      "heading": "Engine Start / Stop",
+      "content": "The <strong>▶ START ENGINE</strong> button launches the <code>VisionEngine</code> thread. A <code>QProgressBar</code> appears while the engine is initializing (loading model, opening cameras, connecting hardware). It hides automatically on the first <code>telemetry_ready</code> signal, confirming the engine is running.",
+      "type": "table",
+      "headers": [
+        "Button State",
+        "Style",
+        "Action"
+      ],
+      "rows": [
+        [
+          "▶️ START ENGINE",
+          "Green gradient",
+          "Calls engine.start() — launches VisionEngine QThread"
+        ],
+        [
+          "⏳ (progress bar visible)",
+          "Blue progress bar",
+          "Engine initializing — button disabled, bar pulses"
+        ],
+        [
+          "⏹️ STOP ENGINE",
+          "Red gradient",
+          "Calls engine.stop() — safe shutdown of all threads"
+        ]
+      ]
+    },
+    {
+      "heading": "Laser Toggle",
+      "content": "The LASER button sends a toggle command to the hardware link via <code>engine.toggle_laser()</code>. Critically, the user intent is preserved across ESP32 disconnections and reconnections — if the ESP32 drops and comes back, the laser state is automatically restored to match the button.",
+      "type": "table",
+      "headers": [
+        "Button State",
+        "Text",
+        "Style"
+      ],
+      "rows": [
+        [
+          "Laser ON",
+          "🟢 LASER ON",
+          "Red background (#ef4444) with white text"
+        ],
+        [
+          "Laser OFF",
+          "🔴 LASER OFF",
+          "Dark card background with cyan border"
+        ]
+      ]
+    },
+    {
+      "heading": "Alarm Toggle",
+      "content": "The ALARM button sends a buzzer enable/disable command: <code>engine.toggle_alarm()</code> which transmits <code>B1</code> or <code>B0</code> to the ESP32 firmware.",
+      "type": "table",
+      "headers": [
+        "Button State",
+        "Text",
+        "Style"
+      ],
+      "rows": [
+        [
+          "Alarm ON",
+          "🔔 ALARM ON",
+          "Orange background (#fb923c) with black text"
+        ],
+        [
+          "Alarm OFF",
+          "🔕 ALARM OFF",
+          "Dark card background with orange border"
+        ]
+      ]
+    },
+    {
+      "heading": "RECONNECT Button",
+      "content": "Calls <code>engine.reconnect_hardware()</code> which bypasses the 5-second auto-reconnect cooldown and forces an immediate connection attempt. Useful when you plug in the ESP32 after starting the engine.",
+      "type": "alert",
+      "alertType": "info",
+      "alertContent": "The RECONNECT button only works while the engine is running. If the engine is stopped, reconnect hardware from the Hardware Control tab instead."
+    },
+    {
+      "heading": "Telemetry Signal — Full Dictionary",
+      "content": "The complete telemetry dict emitted by VisionEngine on every frame:",
+      "type": "code",
+      "language": "python",
+      "code": "# Emitted every frame by: self.telemetry_ready.emit(data)\ndata = {\n    'fps':              float,   # Current inference FPS\n    'latency':          float,   # ms per frame\n    'pan':              float,   # Current commanded pan angle (°)\n    'tilt':             float,   # Current commanded tilt angle (°)\n    'conf':             float,   # AI detection confidence (0.0–1.0)\n    'depth':            float,   # Stereo-estimated distance (m), 0.0 if uncalibrated\n    'status':           str,     # 'LOCKED' or 'SCANNING'\n    'calibration_mode': str,     # e.g. '✅ FULLY CALIBRATED' / '⚠️ UNCALIBRATED RAW'\n}"
+    }
+  ],
+  "category": "Operation"
+}

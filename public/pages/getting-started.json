@@ -1,0 +1,174 @@
+{
+  "id": "getting-started",
+  "title": "Getting Started",
+  "icon": "🚀",
+  "faIcon": "fa-solid fa-rocket",
+  "sections": [
+    {
+      "heading": "Welcome to NEXUS",
+      "content": "NEXUS (Ghost Nexus OS) is a production-grade AI-powered stereo vision and laser targeting system. It fuses dual USB cameras, YOLOv11 pose estimation, Kalman filtering, stereo triangulation, and a hardware-controlled pan/tilt laser module into a single real-time tracking platform. Designed for precision, NEXUS can lock, track, and illuminate a moving person from a distance with millimetric servo accuracy."
+    },
+    {
+      "heading": "System Overview",
+      "content": "NEXUS is built on five core pillars that work together in a real-time pipeline:",
+      "list": [
+        "<strong>AI Vision Engine (VisionEngine — QThread)</strong> — Runs YOLOv11 pose estimation at 30+ FPS, handles stereo frame capture, target locking, and telemetry emission.",
+        "<strong>Kalman Smoother (GhostPredictor)</strong> — Smooths raw AI detections using a Kalman filter with configurable intensity. Returns corrected current positions, never predicted future ones.",
+        "<strong>Stereo Triangulation</strong> — Uses dual-camera epipolar geometry to compute 3D depth of the target using the formula: <code>depth = (focal_px × baseline_cm) / disparity</code>.",
+        "<strong>Homography Transform (CalibrationMath)</strong> — Maps 2D pixel coordinates from the camera frame to physical servo pan/tilt angles using a RANSAC-computed homography matrix.",
+        "<strong>Hardware Controller (TacticalSerial)</strong> — Thread-safe ESP32 serial communication at 115200 baud. Dispatches servo and laser commands in the format <code>P{pan}T{tilt}L{laser}\\n</code> at up to 66Hz."
+      ]
+    },
+    {
+      "heading": "Architecture Diagram",
+      "type": "code",
+      "language": "text",
+      "code": "┌────────────────────────────────────────────────────────────────┐\n│                        NEXUS PIPELINE                          │\n├─────────────┬──────────────────────────────────────────────────┤\n│  Left Cam   │──▶ YOLO v11 Pose Engine ──▶ Shoulder Keypoints   │\n│  Right Cam  │──▶ Stereo Rectify Maps  ──▶ Disparity / Depth    │\n└─────────────┘                                                   │\n                                          ┌────────────────────┐  │\n                                          │  GhostPredictor    │◀─┘\n                                          │  Kalman Smoother   │\n                                          └────────┬───────────┘\n                                                   │\n                                          ┌────────▼───────────┐\n                                          │  CalibrationMath   │\n                                          │  Homography H      │\n                                          │  pixel → (pan,tilt)│\n                                          └────────┬───────────┘\n                                                   │\n                                          ┌────────▼───────────┐\n                                          │  TacticalSerial    │\n                                          │  ESP32 @ 115200    │\n                                          │  P90.0T150.0L1\\n   │\n                                          └────────┬───────────┘\n                                                   │\n                                    ┌──────────────▼────────────┐\n                                    │  Pan Servo │ Tilt Servo    │\n                                    │  Laser Module │ Buzzer     │\n                                    └───────────────────────────┘"
+    },
+    {
+      "heading": "Application Tabs Overview",
+      "type": "table",
+      "headers": [
+        "Tab",
+        "Module",
+        "Purpose"
+      ],
+      "rows": [
+        [
+          "📊 DASHBOARD",
+          "tab_dashboard.py",
+          "Live feed, telemetry, start/stop engine, laser/alarm control, trim sliders"
+        ],
+        [
+          "👁️ VISION SYSTEM",
+          "tab_vision.py",
+          "Model selection, confidence/IOU/FPS tuning, visualization settings"
+        ],
+        [
+          "🔬 PY CALIBRATION",
+          "tab_pycalib.py",
+          "Full stereo calibration with chessboard image capture and RMS analysis"
+        ],
+        [
+          "🔵 LASER ALIGNMENT",
+          "tab_laser.py",
+          "Click-and-steer laser alignment to generate homography matrix"
+        ],
+        [
+          "🔴 MATLAB ENGINE",
+          "tab_matlab.py",
+          "Optional MATLAB-powered stereo calibration (higher precision)"
+        ],
+        [
+          "🌐 DATA BRIDGE",
+          "tab_bridge.py",
+          "Converts MATLAB .mat calibration files to Python .npz archives"
+        ],
+        [
+          "🎮 HARDWARE CONTROL",
+          "tab_hardware.py",
+          "Manual servo control, serial connection management, sweep tests"
+        ],
+        [
+          "⚙️ SETTINGS",
+          "tab_settings.py",
+          "Camera indices, AI model, resolution, COM port, calibration file paths"
+        ],
+        [
+          "📋 LOGS / DEBUG",
+          "tab_logs.py",
+          "Real-time INFO/WARN/ERROR event stream from all subsystems"
+        ]
+      ]
+    },
+    {
+      "heading": "Quick Start Workflow",
+      "type": "steps",
+      "steps": [
+        "Install all software dependencies: CUDA 11.8+, cuDNN, TensorRT, CH340 driver",
+        "Connect hardware: Left camera (USB), Right camera (USB), ESP32 (USB-Serial)",
+        "Launch <code>NEXUS.exe</code> or run <code>python main.py</code> from the project root",
+        "Go to <strong>Settings</strong> → Set <code>CAM_L_IDX</code>, <code>CAM_R_IDX</code>, and <code>SERIAL_PORT</code>",
+        "Go to <strong>PY CALIBRATION</strong> → Capture 20+ stereo chessboard image pairs → Run Calibration (target RMS &lt; 1.0 px)",
+        "Go to <strong>Laser Alignment</strong> → Click points on video, steer laser to match → Save 12+ points → Compute Matrix",
+        "Go to <strong>Dashboard</strong> → Click <strong>▶ START ENGINE</strong> → System begins real-time tracking"
+      ]
+    },
+    {
+      "heading": "Calibration Mode Indicators",
+      "content": "The Dashboard shows a real-time VISION MODE indicator that reflects the calibration state of the running engine:",
+      "type": "table",
+      "headers": [
+        "Mode Label",
+        "Color",
+        "Meaning"
+      ],
+      "rows": [
+        [
+          "✅ FULLY CALIBRATED",
+          "🟢 Green",
+          "Both stereo and laser matrices loaded — full 3D depth + accurate targeting"
+        ],
+        [
+          "⚠️ STEREO ONLY",
+          "🟡 Amber",
+          "Stereo calibration loaded but no laser matrix — depth works, aim may drift"
+        ],
+        [
+          "⚠️ UNCALIBRATED RAW",
+          "🟡 Yellow",
+          "No calibration files — system runs in raw pixel mode, no depth estimation"
+        ]
+      ]
+    },
+    {
+      "heading": "Key Data Files",
+      "type": "table",
+      "headers": [
+        "File",
+        "Location",
+        "Generated By",
+        "Used By"
+      ],
+      "rows": [
+        [
+          "settings.json",
+          "project root",
+          "Auto-generated on first launch",
+          "All modules via config.py"
+        ],
+        [
+          "stereo_calibration_py.npz",
+          "data/",
+          "PY CALIBRATION tab",
+          "VisionEngine — stereo rectification maps"
+        ],
+        [
+          "stereo_calibration_bridge.npz",
+          "data/",
+          "DATA BRIDGE tab (from .mat)",
+          "VisionEngine — MATLAB-precision maps"
+        ],
+        [
+          "laser_alignment.npz",
+          "data/",
+          "LASER ALIGNMENT tab",
+          "VisionEngine — homography matrix H"
+        ],
+        [
+          "yolo11x-pose.engine",
+          "models/",
+          "TensorRT export (one-time)",
+          "VisionEngine — GPU inference"
+        ],
+        [
+          "logo.png",
+          "data/",
+          "Pre-packaged",
+          "Dashboard sidebar logo display"
+        ]
+      ]
+    }
+  ],
+  "category": "Basics"
+}

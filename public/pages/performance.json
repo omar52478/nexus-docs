@@ -1,0 +1,77 @@
+{
+  "id": "performance",
+  "title": "Performance Tuning",
+  "icon": "FiBarChart2",
+  "faIcon": "fa-solid fa-bolt",
+  "category": "Optimization",
+  "sections": [
+    {
+      "heading": "Performance Overview",
+      "content": "NEXUS performance is heavily dependent on AI inference speed and camera capture latency. The system is designed to run at 30+ FPS, but requires specific optimizations based on the host hardware to maintain low latency and high throughput."
+    },
+    {
+      "heading": "Model Benchmarks (RTX 3080 Reference)",
+      "type": "table",
+      "headers": [
+        "Model",
+        "Format",
+        "Est. FPS",
+        "VRAM",
+        "Recommendation"
+      ],
+      "rows": [
+        [
+          "yolo11x-pose",
+          ".engine (FP16)",
+          "~15 FPS",
+          "~600 MB",
+          "Maximum accuracy, fast GPU required"
+        ],
+        [
+          "yolo11m-pose",
+          ".engine (FP16)",
+          "~25 FPS",
+          "~380 MB",
+          "Balanced — recommended default"
+        ],
+        [
+          "yolo11s-pose",
+          ".engine (FP16)",
+          "~40 FPS",
+          "~220 MB",
+          "Fast tracking, budget GPU"
+        ],
+        [
+          "yolo11n-pose",
+          ".engine (FP16)",
+          "~60 FPS",
+          "~120 MB",
+          "Maximum speed, low-end GPU"
+        ],
+        [
+          "yolo11x-pose",
+          ".pt (PyTorch)",
+          "~2-5 FPS",
+          "N/A",
+          "CPU fallback — No GPU available (Very slow)"
+        ]
+      ]
+    },
+    {
+      "heading": "Optimization Strategies",
+      "type": "list",
+      "items": [
+        "<strong>Use TensorRT Engines:</strong> Always export models to <code>.engine</code> format. PyTorch <code>.pt</code> models are 5-10x slower as they run as CPU fallbacks.",
+        "<strong>Lower Camera Resolution:</strong> Dropping <code>RESOLUTION</code> from [1280, 720] to [640, 480] in Settings provides a massive speed boost and reduces capture latency on lower-end hardware.",
+        "<strong>Mitigate CPU & USB Bottlenecks:</strong> Camera capture runs on the CPU. Connect cameras to separate physical USB 3.0 ports to lower capture latency. Sharing a USB hub increases delay.",
+        "<strong>Free Up GPU Memory:</strong> Close other GPU-intensive applications, including games, other ML models, and browsers with hardware acceleration."
+      ]
+    },
+    {
+      "heading": "Latency Bottleneck Detection via Logs",
+      "type": "code",
+      "language": "python",
+      "code": "# Enable DEBUG level logging in main.py to view per-frame timing\nimport logging\nlogging.basicConfig(level=logging.DEBUG)\n\n# Analyze the ──── Frame Timing ──── output in the logs:\n# [DEBUG] capture_time = 8.2ms   -> If > 15ms: Check USB 3.0 ports, lower resolution\n# [DEBUG] inference_time = 18.4ms -> If dominating: Switch to lighter model or rebuild .engine\n# [DEBUG] dispatch_time = 0.3ms  -> If > 5ms: Check for serial port lag or baud mismatch"
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "id": "installation",
+  "title": "Installation",
+  "icon": "📦",
+  "faIcon": "fa-solid fa-download",
+  "sections": [
+    {
+      "heading": "System Requirements",
+      "type": "table",
+      "headers": [
+        "Component",
+        "Requirement",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Operating System",
+          "Windows 10 / 11 (64-bit)",
+          "Linux not supported — PyQt6 + TensorRT combo tested on Windows only"
+        ],
+        [
+          "GPU",
+          "NVIDIA GTX 1060+ / RTX Series",
+          "CUDA compute capability 6.0 minimum. RTX 30/40 series strongly recommended for TensorRT"
+        ],
+        [
+          "RAM",
+          "8 GB minimum, 16 GB recommended",
+          "YOLO11x-pose loads ~600 MB VRAM; 16 GB ensures headroom for stereo frames"
+        ],
+        [
+          "Storage",
+          "10 GB free space",
+          "Models: ~300 MB each, TensorRT engines: ~600 MB, calibration data: ~50 MB"
+        ],
+        [
+          "USB Ports",
+          "3× USB 2.0/3.0",
+          "Left camera + Right camera + ESP32 serial — all must be distinct physical ports"
+        ],
+        [
+          "Python",
+          "3.10 (source install only)",
+          "Not required when running compiled NEXUS.exe"
+        ],
+        [
+          "Display",
+          "1280×720 minimum",
+          "Recommended 1920×1080 for sidebar + video feed to fit comfortably"
+        ]
+      ]
+    },
+    {
+      "heading": "Step 1 — NVIDIA Driver + CUDA",
+      "content": "Install the full NVIDIA toolchain in order. Each package depends on the previous one.",
+      "type": "steps",
+      "steps": [
+        "<strong>NVIDIA Driver (latest)</strong> — Download from <a href='https://nvidia.com/drivers' target='_blank'>nvidia.com/drivers</a>. Reboot after install.",
+        "<strong>CUDA Toolkit 11.8 or 12.x</strong> — Download from <a href='https://developer.nvidia.com/cuda-downloads' target='_blank'>NVIDIA CUDA Downloads</a>. Run the installer, keep default paths.",
+        "<strong>cuDNN 8.x or 9.x</strong> — Download from <a href='https://developer.nvidia.com/cudnn' target='_blank'>NVIDIA cuDNN</a> (requires free NVIDIA Developer account). Extract and copy files to your CUDA installation directory.",
+        "<strong>TensorRT 8.x or 10.x</strong> — Download from <a href='https://developer.nvidia.com/tensorrt' target='_blank'>NVIDIA TensorRT</a>. Extract and add the <code>lib/</code> folder to your system PATH.",
+        "Verify with: <code>nvcc --version</code> and <code>python -c \"import torch; print(torch.cuda.is_available())\"</code>"
+      ]
+    },
+    {
+      "heading": "Step 2 — ESP32 USB Driver",
+      "content": "The ESP32 DevKit uses a CH340 USB-to-Serial chip. Windows may not include this driver by default.",
+      "type": "steps",
+      "steps": [
+        "Download the CH340 driver from <a href='http://www.wch-ic.com/downloads/CH341SER_ZIP.html' target='_blank'>WCH CH341SER</a>",
+        "Run <code>SETUP.EXE</code> from the extracted zip and click <strong>INSTALL</strong>",
+        "Plug in your ESP32 and open Device Manager → Ports (COM &amp; LPT) — you should see <strong>USB-SERIAL CH340 (COMx)</strong>",
+        "Note the COM number (e.g., COM3, COM8) — you will need this in Settings"
+      ]
+    },
+    {
+      "heading": "Step 3 — Visual C++ Redistributable",
+      "content": "Required for PyQt6 and OpenCV DLLs to load correctly on Windows.",
+      "type": "steps",
+      "steps": [
+        "Download from <a href='https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist' target='_blank'>Microsoft VC++ Redist</a>",
+        "Run the installer for both <strong>x64</strong> and <strong>x86</strong> versions",
+        "Reboot if prompted"
+      ]
+    },
+    {
+      "heading": "Step 4 — Python Packages (Source Install Only)",
+      "content": "If running from source rather than the compiled .exe, install all Python dependencies:",
+      "type": "code",
+      "language": "bash",
+      "code": "# Core UI and Vision\npip install PyQt6 opencv-python numpy\n\n# AI + GPU Inference\npip install ultralytics torch torchvision --index-url https://download.pytorch.org/whl/cu118\n\n# Serial Communication\npip install pyserial\n\n# Math and calibration\npip install scipy\n\n# Optional: MATLAB bridge\npip install matlabengine  # Must match your installed MATLAB version exactly"
+    },
+    {
+      "heading": "Step 5 — Build TensorRT Engine",
+      "content": "TensorRT engines are GPU-specific and must be built on the machine that will run NEXUS. This is a one-time process per GPU per model. Engines are typically 5–10× faster than raw .pt inference.",
+      "type": "code",
+      "language": "python",
+      "code": "from ultralytics import YOLO\nimport os\n\n# Choose your model (trade accuracy for speed)\nmodels = [\n    'models/yolo11x-pose.pt',   # Highest accuracy, ~15 FPS\n    'models/yolo11m-pose.pt',   # Balanced,         ~25 FPS\n    'models/yolo11s-pose.pt',   # Fast,              ~40 FPS\n    'models/yolo11n-pose.pt',   # Fastest,           ~60 FPS\n]\n\nfor m in models:\n    if os.path.exists(m):\n        print(f\"Building engine for {m}...\")\n        model = YOLO(m)\n        model.export(format='engine', device=0, half=True)  # half=True for FP16\n        print(f\"Done: {m.replace('.pt', '.engine')}\")"
+    },
+    {
+      "heading": "Step 6 — Flash ESP32 Firmware",
+      "content": "The ESP32 must run the NEXUS firmware before hardware control will work.",
+      "type": "steps",
+      "steps": [
+        "Open <strong>Arduino IDE 2.x</strong>",
+        "Install ESP32 board support: File → Preferences → add <code>https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json</code> to Board Manager URLs",
+        "Install the board: Tools → Board Manager → search ESP32 → install <strong>esp32 by Espressif Systems</strong>",
+        "Open <code>firmware/nexus_guardian_v2.2.ino</code>",
+        "Select Board: <strong>ESP32 Dev Module</strong> and correct COM port",
+        "Click <strong>Upload</strong>. After flashing, open Serial Monitor @ 115200 baud to verify the heartbeat is streaming."
+      ]
+    },
+    {
+      "heading": "Project Directory Structure",
+      "type": "code",
+      "language": "text",
+      "code": "NEXUS/\n├── main.py                    # Application entry point\n├── config.py                  # Global CONFIG dictionary + load/save\n├── settings.json              # Auto-generated user settings\n├── models/\n│   ├── yolo11x-pose.pt        # Downloaded YOLO weights\n│   └── yolo11x-pose.engine    # TensorRT engine (built locally)\n├── data/\n│   ├── logo.png               # Dashboard logo\n│   ├── stereo_calibration_py.npz   # Python calibration output\n│   ├── stereo_calibration_bridge.npz  # MATLAB bridge output\n│   └── laser_alignment.npz    # Laser homography matrix\n├── core/\n│   ├── vision_engine.py       # VisionEngine QThread — main AI loop\n│   ├── predictor.py           # GhostPredictor Kalman smoother\n│   ├── hardware_link.py       # TacticalSerial ESP32 comms\n│   ├── math_calib.py          # CalibrationMath pure functions\n│   └── python_calib_worker.py # Stereo calibration background thread\n├── gui/\n│   ├── components/\n│   │   └── video_widget.py    # TacticalVideoWidget (click-enabled)\n│   ├── tab_dashboard.py\n│   ├── tab_hardware.py\n│   ├── tab_laser.py\n│   ├── tab_pycalib.py\n│   ├── tab_stereo.py\n│   ├── tab_matlab.py\n│   ├── tab_bridge.py\n│   └── tab_settings.py\n└── firmware/\n    └── nexus_guardian_v2.2.ino  # ESP32 Arduino firmware"
+    },
+    {
+      "heading": "First Launch Notes",
+      "type": "alert",
+      "alertType": "warning",
+      "alertContent": "<strong>On first launch:</strong> NEXUS auto-generates <code>settings.json</code> with safe default values. You <strong>must</strong> configure CAM_L_IDX, CAM_R_IDX, and SERIAL_PORT in the Settings tab before starting the engine. The engine will fail to start if cameras cannot be opened at the specified indices."
+    },
+    {
+      "heading": "settings.json Default Values",
+      "type": "code",
+      "language": "json",
+      "code": "{\n  \"MODEL_PATH\": \"models/yolo11x-pose.engine\",\n  \"CAM_L_IDX\": 1,\n  \"CAM_R_IDX\": 4,\n  \"RESOLUTION\": [1280, 720],\n  \"SERIAL_PORT\": \"COM8\",\n  \"BAUD_RATE\": 115200,\n  \"CONFIDENCE\": 0.5,\n  \"SMOOTHING\": 0.2,\n  \"MAX_Y_TOLERANCE\": 60,\n  \"HOME_PAN\": 90,\n  \"HOME_TILT\": 150,\n  \"PAN_TRIM\": 0.0,\n  \"TILT_TRIM\": 0.0,\n  \"AIM_OFFSET\": 0,\n  \"AIM_SMOOTHNESS\": 50,\n  \"AIM_FILTER\": 50,\n  \"SAFETY_TIMEOUT\": 30,\n  \"STEREO_FILE\": \"data/stereo_calibration_py.npz\",\n  \"LASER_FILE\": \"data/laser_alignment.npz\"\n}"
+    }
+  ],
+  "category": "Basics"
+}

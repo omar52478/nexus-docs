@@ -1,0 +1,53 @@
+{
+  "id": "faq",
+  "title": "FAQ & Diagnostics",
+  "icon": "FiHelpCircle",
+  "faIcon": "fa-solid fa-circle-question",
+  "category": "Support",
+  "sections": [
+    {
+      "heading": "📸 Cameras & Vision System",
+      "type": "list",
+      "items": [
+        "<strong>Why are cameras not detected at all?</strong> Hot-plugging after launch is not supported — cameras must be plugged in BEFORE launching NEXUS. Go to Settings and try different CAM_L_IDX and CAM_R_IDX values (0, 1, 2, 3, 4) until both feeds appear.",
+        "<strong>Why is only one camera showing?</strong> Ensure CAM_L_IDX and CAM_R_IDX are not identical. If both show the same feed, one index is wrong.",
+        "<strong>Why do the cameras fail to open simultaneously?</strong> This is often a USB bandwidth issue. Avoid plugging both cameras into the same USB hub; use separate physical USB ports on the motherboard. You can also try lowering the RESOLUTION to [640, 480] in Settings.",
+        "<strong>Why is depth estimation always 0.0m?</strong> Depth estimation requires a valid stereo calibration file. If the Dashboard shows '⚠️ UNCALIBRATED RAW', you must run PY CALIBRATION first. Also, ensure the right camera is functioning, as disparity requires both feeds.",
+        "<strong>Why are depth measurements completely inaccurate?</strong> The target might be outside the reliable depth range of 0.5–5m. Alternatively, the baseline (distance between cameras) might be too small (< 4cm), causing low disparity and poor accuracy."
+      ]
+    },
+    {
+      "heading": "🔌 Hardware & Serial Communication",
+      "type": "list",
+      "items": [
+        "<strong>Why is the ESP32 failing to connect?</strong> Check Device Manager → Ports (COM & LPT) for 'USB-SERIAL CH340' and ensure that exact port is in Settings. If it's missing, install the CH340 driver from WCH.",
+        "<strong>Port is correct, but still 'PermissionError'?</strong> Close Arduino IDE Serial Monitor, PuTTY, or any other terminal connected to the COM port. Only one application can own a COM port at a time.",
+        "<strong>Why are the servos weak, jittery, or unresponsive?</strong> Insufficient power supply is the most common cause. MG996R servos draw up to 2.5A at stall; do NOT power them from the ESP32 5V pin. Use an external 5V 3A regulator.",
+        "<strong>I added external power, but servos still jitter?</strong> The external power supply GND MUST be connected to the ESP32 GND to share a common reference. Also, check if AIM_SMOOTHNESS is set too high or if there is PWM interference from nearby cables.",
+        "<strong>Why isn't the laser firing?</strong> Check the Dashboard to ensure the LASER toggle is ON. Verify the ESP32 is flashed with nexus_guardian_v2.2.ino. Ensure the laser is physically wired to GPIO 14. If the dot is faint, try powering the laser module with 5V instead of 3.3V."
+      ]
+    },
+    {
+      "heading": "⚡ AI Engine & Performance",
+      "type": "list",
+      "items": [
+        "<strong>Why is the FPS dropping below 10 or severely lagging?</strong> You are likely using a PyTorch (.pt) model which runs on CPU and is 5–10× slower. Build and switch to a TensorRT (.engine) model for your GPU.",
+        "<strong>How else can I improve FPS?</strong> Lower the RESOLUTION to [640, 480] in Settings. Switch to a lighter model like yolo11m-pose (~25 FPS) or yolo11s-pose (~40 FPS) instead of yolo11x-pose (~15 FPS). Close background GPU-intensive apps.",
+        "<strong>Why does model loading fail (AI Engine Not Found)?</strong> The file at MODEL_PATH does not exist. If using an .engine file, it must be built on your current machine's exact GPU; engines are not portable. Ensure TensorRT is installed and in your PATH.",
+        "<strong>Why does the system constantly lose target lock?</strong> Your IOU_THRESHOLD might be too high, or the target is moving faster than MAX_Y_TOLERANCE allows. Try lowering IOU_THRESHOLD or increasing MAX_Y_TOLERANCE.",
+        "<strong>Why do I get 'Repeated No detection' warnings?</strong> The CONFIDENCE threshold may be too high, or the target is partially occluded. Try lowering CONFIDENCE in Settings to 0.35."
+      ]
+    },
+    {
+      "heading": "🎯 Calibration (Stereo & Laser)",
+      "type": "list",
+      "items": [
+        "<strong>Why is the Stereo RMS Error > 1.0 px?</strong> The most common cause is a warped or bent chessboard; use a perfectly flat, rigid backing like foam board. Other causes include blurry images, glare on glossy paper, or capturing while the board is moving.",
+        "<strong>How can I improve my Stereo Calibration?</strong> Capture at least 20+ pairs of images. Ensure massive variety: tilt the board 20–45° in X and Y axes, capture at distances from 0.5m to 2m, and cover all four corners of the frame.",
+        "<strong>Why does the laser hit the center accurately but miss at the edges?</strong> You did not collect enough points during Laser Alignment, or your coverage was clustered only in the center. Collect at least 12 points (20+ recommended) ensuring you include points near all four frame corners.",
+        "<strong>Do I need to redo full laser alignment for a 2-degree error?</strong> No. Use the PAN_TRIM and TILT_TRIM sliders in the Dashboard to apply a global offset (±18°) for small systematic misalignments. If the error is > 5° everywhere, you must redo full alignment.",
+        "<strong>When MUST I recalibrate?</strong> If the cameras were bumped or the pan/tilt assembly was physically moved relative to the cameras, the previous matrices are completely invalidated. You must recalibrate."
+      ]
+    }
+  ]
+}

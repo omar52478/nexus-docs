@@ -1,0 +1,274 @@
+{
+  "id": "vision-system",
+  "title": "Vision System",
+  "icon": "👁️",
+  "faIcon": "fa-solid fa-eye",
+  "sections": [
+    {
+      "heading": "Vision System Overview",
+      "content": "The Vision System tab (<code>tab_vision.py</code>) is where you configure the AI inference pipeline, model parameters, and visual overlay options. Changes made here are applied to the running engine in real time — no restart required for most settings. The tab communicates directly with <code>CONFIG</code> via <code>save_config()</code> and signals the <code>VisionEngine</code> thread to reload settings."
+    },
+    {
+      "heading": "AI Vision Engine (VisionEngine)",
+      "content": "The <code>VisionEngine</code> is a <code>QThread</code> that runs the full AI pipeline in the background. It captures stereo frames, runs YOLO inference, applies Kalman smoothing, computes stereo depth, transforms coordinates via homography, and dispatches servo commands — all at 30+ FPS.",
+      "type": "code",
+      "language": "python",
+      "code": "class VisionEngine(QThread):\n    # Signals emitted every frame\n    frame_ready     = pyqtSignal(np.ndarray)  # Combined stereo frame (H, W*2, 3)\n    telemetry_ready = pyqtSignal(dict)        # FPS, latency, pan, tilt, conf, depth, status\n\n    # Key methods\n    def setup_model(self)         # Load/reload YOLO model from CONFIG['MODEL_PATH']\n    def setup_matrices(self)      # Load stereo maps + laser homography from .npz files\n    def setup(self)               # Open cameras at CAM_L_IDX / CAM_R_IDX\n    def run(self)                 # Main inference loop — called by .start()\n    def stop(self)                # Graceful shutdown: stops loop, closes cameras, disconnects HW\n    def toggle_laser(self)        # Toggle laser intent (preserved across reconnects)\n    def reconnect_hardware(self)  # Force immediate hardware reconnect (bypass cooldown)"
+    },
+    {
+      "heading": "Main Inference Loop (run)",
+      "content": "The core loop inside <code>VisionEngine.run()</code> executes the full pipeline on every frame:",
+      "type": "steps",
+      "steps": [
+        "<strong>Frame Capture:</strong> Read left and right frames simultaneously from both USB cameras",
+        "<strong>Stereo Rectification:</strong> Apply <code>cv2.remap()</code> using pre-computed rectification maps (if stereo calibrated)",
+        "<strong>YOLO Inference:</strong> Run pose/detection model on the left frame only (right used for depth only)",
+        "<strong>Target Locking:</strong> Apply IoU-based single-target lock system — select or maintain locked person",
+        "<strong>Keypoint Extraction:</strong> Extract shoulder keypoints [5] and [6] to compute aim point",
+        "<strong>Kalman Smoothing:</strong> Pass aim point through <code>GhostPredictor.predict_target(cx, cy)</code>",
+        "<strong>Homography Transform:</strong> Convert pixel (cx, cy) → servo angles (pan, tilt) via matrix H",
+        "<strong>Depth Estimation:</strong> Compute stereo disparity between left/right shoulder positions → distance in meters",
+        "<strong>Hardware Dispatch:</strong> Send <code>P{pan}T{tilt}L{laser}\\n</code> to ESP32 via <code>TacticalSerial</code>",
+        "<strong>Telemetry Emit:</strong> Emit <code>telemetry_ready</code> and <code>frame_ready</code> signals to the Dashboard"
+      ]
+    },
+    {
+      "heading": "Supported Models",
+      "type": "table",
+      "headers": [
+        "Model File",
+        "Task",
+        "Est. FPS (TensorRT)",
+        "VRAM",
+        "Accuracy",
+        "Use Case"
+      ],
+      "rows": [
+        [
+          "yolo11x-pose.engine",
+          "Pose Estimation",
+          "~15 FPS",
+          "~600 MB",
+          "🟢 Highest",
+          "Best accuracy, demanding hardware"
+        ],
+        [
+          "yolo11m-pose.engine",
+          "Pose Estimation",
+          "~25 FPS",
+          "~380 MB",
+          "🟡 High",
+          "Balanced — recommended default"
+        ],
+        [
+          "yolo11s-pose.engine",
+          "Pose Estimation",
+          "~40 FPS",
+          "~220 MB",
+          "🟠 Medium",
+          "Fast tracking, less accurate keypoints"
+        ],
+        [
+          "yolo11n-pose.engine",
+          "Pose Estimation",
+          "~60 FPS",
+          "~120 MB",
+          "🔴 Lower",
+          "Maximum speed, reduced accuracy"
+        ],
+        [
+          "yolo11x.engine",
+          "Object Detection",
+          "~18 FPS",
+          "~550 MB",
+          "🟢 Highest",
+          "No keypoints — bounding box only"
+        ],
+        [
+          "yolo11x-seg.engine",
+          "Segmentation",
+          "~12 FPS",
+          "~700 MB",
+          "🟢 Highest",
+          "Pixel-level segmentation masks"
+        ]
+      ]
+    },
+    {
+      "heading": "Model Loading Logic",
+      "content": "The engine auto-detects task type from the model filename to determine how to extract the aim point:",
+      "type": "code",
+      "language": "python",
+      "code": "# In vision_engine.py — setup_model()\nmodel_path = CONFIG['MODEL_PATH'].lower()\n\nif 'pose' in model_path:\n    self.task = 'pose'       # Use shoulder keypoints [5],[6]\nelif 'seg' in model_path:\n    self.task = 'seg'        # Use segmentation mask centroid\nelse:\n    self.task = 'detect'     # Use bounding box center\n\nself.model = YOLO(CONFIG['MODEL_PATH'])\n# For .engine files: inference on GPU via TensorRT (5-10x faster than .pt)"
+    },
+    {
+      "heading": "Single-Target Lock System",
+      "content": "NEXUS uses an IoU-based single-target lock system to maintain stable focus on one person even when multiple people enter the frame.",
+      "type": "table",
+      "headers": [
+        "Phase",
+        "Behavior",
+        "Parameter"
+      ],
+      "rows": [
+        [
+          "No Lock",
+          "Selects the person with the largest bounding box area",
+          "Automatic"
+        ],
+        [
+          "Lock Acquired",
+          "Stores locked target bounding box as reference",
+          "IoU threshold: 0.25"
+        ],
+        [
+          "Lock Maintained",
+          "Matches new detections to locked box using IoU overlap",
+          "CONFIG['IOU_THRESHOLD']"
+        ],
+        [
+          "Lock Lost",
+          "Waits LOCK_PATIENCE frames before selecting new target",
+          "Default: 10 frames"
+        ],
+        [
+          "Visual Feedback",
+          "Locked target shown with red bounding box + 'LOCKED' label",
+          "Overlay always on"
+        ]
+      ]
+    },
+    {
+      "heading": "IoU Lock Implementation",
+      "type": "code",
+      "language": "python",
+      "code": "def compute_iou(boxA, boxB):\n    \"\"\"Calculate Intersection-over-Union between two bounding boxes.\"\"\"\n    xA = max(boxA[0], boxB[0])\n    yA = max(boxA[1], boxB[1])\n    xB = min(boxA[2], boxB[2])\n    yB = min(boxA[3], boxB[3])\n\n    interArea = max(0, xB - xA) * max(0, yB - yA)\n    boxAArea  = (boxA[2]-boxA[0]) * (boxA[3]-boxA[1])\n    boxBArea  = (boxB[2]-boxB[0]) * (boxB[3]-boxB[1])\n    union     = boxAArea + boxBArea - interArea\n\n    return interArea / union if union > 0 else 0.0\n\n# Lock check per frame:\nif self.locked_box is not None:\n    iou = compute_iou(self.locked_box, new_box)\n    if iou >= CONFIG.get('IOU_THRESHOLD', 0.25):\n        self.lock_patience = 10  # Reset patience\n        self.locked_box = new_box  # Update locked box\n    else:\n        self.lock_patience -= 1\n        if self.lock_patience <= 0:\n            self.locked_box = None  # Release lock"
+    },
+    {
+      "heading": "Keypoint Targeting (Pose Mode)",
+      "content": "When using a pose model, NEXUS extracts the shoulder keypoints at COCO indices 5 (left shoulder) and 6 (right shoulder) to compute a precise aim point. The aim point is the midpoint between both shoulders, then shifted downward by <code>AIM_OFFSET</code> pixels.",
+      "type": "code",
+      "language": "python",
+      "code": "# From vision_engine.py — pose keypoint extraction\nkp = result.keypoints.xy[person_idx].cpu().numpy()  # Shape: (17, 2)\n\n# COCO keypoint indices:\n# 0=nose, 1=left_eye, 2=right_eye, 3=left_ear, 4=right_ear\n# 5=left_shoulder, 6=right_shoulder ← NEXUS uses these\n# 7=left_elbow, 8=right_elbow, ...\n\nleft_shoulder  = kp[5]  # [x, y]\nright_shoulder = kp[6]  # [x, y]\n\n# Compute shoulder midpoint\nmid_sx = int((kp[5][0] + kp[6][0]) / 2)\nmid_sy = int((kp[5][1] + kp[6][1]) / 2)\n\n# Apply user-configurable vertical offset\ncx = mid_sx\ncy = mid_sy + CONFIG['AIM_OFFSET']  # 0=shoulders, 50=chest, 100=stomach"
+    },
+    {
+      "heading": "Stereo Depth Estimation",
+      "content": "When stereo calibration is loaded, NEXUS computes real-world distance to the target using the disparity between left and right camera shoulder positions.",
+      "type": "code",
+      "language": "python",
+      "code": "# Stereo depth formula (vision_engine.py)\n# Requires: stereo calibration .npz with focal_px and baseline_cm\n\n# Disparity = horizontal pixel difference between left/right shoulder\nleft_shoulder_x  = kp_left[5][0]   # Left cam shoulder X\nright_shoulder_x = kp_right[5][0]  # Right cam shoulder X\nbest_disparity   = abs(left_shoulder_x - right_shoulder_x)\n\nif best_disparity > 0:\n    raw_z = (focal_px * baseline_cm) / best_disparity  # in cm\n    raw_z = raw_z / 100.0  # Convert to meters\n\n    # Smooth with EMA filter\n    SMOOTHING = CONFIG.get('SMOOTHING', 0.2)\n    self.smooth_z = self.smooth_z * (1 - SMOOTHING) + raw_z * SMOOTHING\n    depth_m = round(self.smooth_z, 2)\nelse:\n    depth_m = 0.0  # No disparity = no depth"
+    },
+    {
+      "heading": "Homography Coordinate Transform",
+      "content": "The final aim point in pixels is converted to servo pan/tilt angles using the laser alignment homography matrix H. This matrix was computed during laser calibration from N≥12 click-to-angle correspondences.",
+      "type": "code",
+      "language": "python",
+      "code": "# From core/math_calib.py — apply_homography()\ndef apply_homography(px: float, py: float, H: np.ndarray) -> tuple:\n    \"\"\"Convert pixel coords to servo angles via homography matrix.\"\"\"\n    point = np.array([[[px, py]]], dtype=np.float32)\n    result = cv2.perspectiveTransform(point, H)\n    pan  = float(result[0][0][0])\n    tilt = float(result[0][0][1])\n    return pan, tilt\n\n# Called in vision_engine.py after Kalman smoothing:\nsmooth_cx, smooth_cy = self.predictor.predict_target(cx, cy)\npan, tilt = CalibrationMath.apply_homography(smooth_cx, smooth_cy, self.H)\n\n# Apply trim offsets\npan  += CONFIG['PAN_TRIM']\ntilt += CONFIG['TILT_TRIM']\n\n# Clamp to safe servo range\npan  = max(0.0, min(180.0, pan))\ntilt = max(0.0, min(180.0, tilt))"
+    },
+    {
+      "heading": "Calibration Mode Detection",
+      "content": "On startup, the engine checks which calibration files are available and sets the operating mode accordingly:",
+      "type": "table",
+      "headers": [
+        "Mode",
+        "Stereo File",
+        "Laser File",
+        "Capabilities",
+        "Dashboard Color"
+      ],
+      "rows": [
+        [
+          "✅ FULLY CALIBRATED",
+          "✅ Loaded",
+          "✅ Loaded",
+          "3D depth + accurate servo angles",
+          "🟢 Green"
+        ],
+        [
+          "⚠️ STEREO ONLY",
+          "✅ Loaded",
+          "❌ Missing",
+          "Depth works, aim uses raw pixels",
+          "🟡 Amber"
+        ],
+        [
+          "⚠️ UNCALIBRATED RAW",
+          "❌ Missing",
+          "❌ Missing",
+          "No depth, raw pixel-to-angle mapping",
+          "🟡 Yellow"
+        ]
+      ]
+    },
+    {
+      "heading": "Vision System Tab — Configurable Parameters",
+      "type": "table",
+      "headers": [
+        "Parameter",
+        "Config Key",
+        "Range",
+        "Default",
+        "Effect"
+      ],
+      "rows": [
+        [
+          "Confidence Threshold",
+          "CONFIDENCE",
+          "0.1 — 0.95",
+          "0.50",
+          "Minimum AI confidence to accept detection"
+        ],
+        [
+          "IOU Threshold",
+          "IOU_THRESHOLD",
+          "0.1 — 0.9",
+          "0.25",
+          "Minimum overlap to maintain target lock"
+        ],
+        [
+          "Max Y Tolerance",
+          "MAX_Y_TOLERANCE",
+          "10 — 200 px",
+          "60",
+          "Max vertical pixel jump allowed per frame"
+        ],
+        [
+          "Resolution Width",
+          "RESOLUTION[0]",
+          "320 — 1920",
+          "1280",
+          "Camera capture width"
+        ],
+        [
+          "Resolution Height",
+          "RESOLUTION[1]",
+          "240 — 1080",
+          "720",
+          "Camera capture height"
+        ],
+        [
+          "AI Model Path",
+          "MODEL_PATH",
+          "file path",
+          "yolo11x-pose.engine",
+          "Path to YOLO .pt or .engine file"
+        ]
+      ]
+    },
+    {
+      "heading": "EMA Output Smoothing",
+      "content": "An Exponential Moving Average filter is applied to the final servo commands before dispatch. This prevents jitter from small frame-to-frame variations in detection.",
+      "type": "code",
+      "language": "python",
+      "code": "# EMA smoothing on servo commands (vision_engine.py)\n# AIM_SMOOTHNESS: 0 = instant snap, 100 = ultra-smooth\nalpha = 1.0 - (CONFIG['AIM_SMOOTHNESS'] / 100.0)\n# alpha=1.0 → no smoothing (raw), alpha=0.01 → very heavy smoothing\n\nself.ema_pan  = self.ema_pan  * (1 - alpha) + pan  * alpha\nself.ema_tilt = self.ema_tilt * (1 - alpha) + tilt * alpha\n\nfinal_pan  = round(self.ema_pan,  1)\nfinal_tilt = round(self.ema_tilt, 1)"
+    },
+    {
+      "heading": "Safety Timeout",
+      "content": "If no target is detected for <code>SAFETY_TIMEOUT</code> seconds, the servos return to the home position (Pan=90°, Tilt=150°) and the laser is forced off. This prevents the system from remaining aimed at a last-known position indefinitely.",
+      "type": "code",
+      "language": "python",
+      "code": "# Safety timeout check (vision_engine.py)\nif time.time() - self.last_detection_time > CONFIG['SAFETY_TIMEOUT']:\n    self.hardware.send_target(CONFIG['HOME_PAN'], CONFIG['HOME_TILT'])\n    self.hardware.force_laser(0)\n    self.lock_target = None\n    self.locked_box  = None"
+    }
+  ],
+  "category": "Core System"
+}

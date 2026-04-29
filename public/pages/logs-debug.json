@@ -1,0 +1,249 @@
+{
+  "id": "logs-debug",
+  "title": "Logs & Debug",
+  "icon": "📋",
+  "faIcon": "fa-solid fa-terminal",
+  "sections": [
+    {
+      "heading": "Logs Tab Overview",
+      "content": "The Logs / Debug tab (<code>tab_logs.py</code>) streams real-time events from all NEXUS subsystems into a scrollable text panel. Every INFO, WARNING, and ERROR event emitted by the VisionEngine, TacticalSerial, CalibrationMath, and GUI layers is captured and displayed with a timestamp, log level, and source module. This is the first place to check when something is not working as expected."
+    },
+    {
+      "heading": "Log Level Reference",
+      "type": "table",
+      "headers": [
+        "Level",
+        "Color",
+        "Meaning",
+        "Examples"
+      ],
+      "rows": [
+        [
+          "[INFO]",
+          "🟢 Green / White",
+          "Normal operational events",
+          "Engine started, model loaded, calibration loaded, hardware connected"
+        ],
+        [
+          "[WARNING]",
+          "🟡 Yellow / Orange",
+          "Non-fatal issues that may affect performance",
+          "Hardware disconnected, RMS > 1.0 px, low FPS, no target for N seconds"
+        ],
+        [
+          "[ERROR]",
+          "🔴 Red",
+          "Failures that prevent a subsystem from functioning",
+          "Camera failed to open, model not found, serial permission denied, JSON parse error"
+        ],
+        [
+          "[DEBUG]",
+          "⚪ Gray",
+          "Verbose internal state — disabled by default",
+          "Per-frame timing, Kalman state, raw serial bytes"
+        ]
+      ]
+    },
+    {
+      "heading": "Log Message Format",
+      "type": "code",
+      "language": "text",
+      "code": "# Format: [TIMESTAMP] [LEVEL] MODULE: message\n\n[14:23:01.441] [INFO]    VisionEngine: Model loaded — yolo11x-pose.engine (task=pose)\n[14:23:01.882] [INFO]    VisionEngine: Cameras opened — L:index=1 (1280×720) R:index=4 (1280×720)\n[14:23:02.104] [INFO]    TacticalSerial: Connected to COM8 @ 115200 baud\n[14:23:02.108] [INFO]    VisionEngine: Stereo calibration loaded — focal=892.4px baseline=8.3cm RMS=0.41px\n[14:23:02.112] [INFO]    VisionEngine: Laser homography loaded — 18 points, reproj_error=1.2px\n[14:23:02.115] [INFO]    VisionEngine: Calibration mode: ✅ FULLY CALIBRATED\n[14:23:05.320] [INFO]    VisionEngine: Target LOCKED — conf=0.91 depth=1.84m pan=88.2° tilt=149.1°\n[14:23:35.771] [WARNING] VisionEngine: No detection for 30.0s — returning to home position\n[14:24:11.002] [WARNING] TacticalSerial: Heartbeat timeout — marking as disconnected\n[14:24:16.003] [INFO]    TacticalSerial: Reconnected to COM8 — laser state restored (ON)\n[14:24:58.991] [ERROR]   VisionEngine: Camera index 4 failed to open — check CAM_R_IDX"
+    },
+    {
+      "heading": "Key Log Messages and Their Meaning",
+      "type": "table",
+      "headers": [
+        "Log Message",
+        "Level",
+        "Source",
+        "What It Means"
+      ],
+      "rows": [
+        [
+          "Model loaded — yolo11x-pose.engine",
+          "INFO",
+          "VisionEngine",
+          "TensorRT engine successfully loaded on GPU"
+        ],
+        [
+          "Cameras opened — L:index=1 R:index=4",
+          "INFO",
+          "VisionEngine",
+          "Both cameras opened successfully at configured indices"
+        ],
+        [
+          "Connected to COM8 @ 115200 baud",
+          "INFO",
+          "TacticalSerial",
+          "ESP32 serial link established"
+        ],
+        [
+          "Stereo calibration loaded — RMS=0.41px",
+          "INFO",
+          "VisionEngine",
+          "Stereo .npz loaded and rectification maps applied"
+        ],
+        [
+          "Laser homography loaded — N points",
+          "INFO",
+          "VisionEngine",
+          "Laser alignment matrix H loaded from .npz"
+        ],
+        [
+          "Calibration mode: ✅ FULLY CALIBRATED",
+          "INFO",
+          "VisionEngine",
+          "Both calibration files present — full capability"
+        ],
+        [
+          "Target LOCKED — conf=0.91 depth=1.84m",
+          "INFO",
+          "VisionEngine",
+          "Target acquired and IoU lock confirmed"
+        ],
+        [
+          "No detection for 30.0s — returning to home",
+          "WARNING",
+          "VisionEngine",
+          "Safety timeout triggered — servos homed, laser off"
+        ],
+        [
+          "Heartbeat timeout — marking as disconnected",
+          "WARNING",
+          "TacticalSerial",
+          "ESP32 stopped responding — auto-reconnect will begin"
+        ],
+        [
+          "Reconnected to COM8 — laser state restored",
+          "INFO",
+          "TacticalSerial",
+          "Hardware link restored after drop — laser intent re-applied"
+        ],
+        [
+          "Camera index 4 failed to open",
+          "ERROR",
+          "VisionEngine",
+          "Wrong CAM_R_IDX — check Settings and try different index"
+        ],
+        [
+          "Model file not found at path",
+          "ERROR",
+          "VisionEngine",
+          "MODEL_PATH does not point to an existing file"
+        ],
+        [
+          "Serial port COM8: PermissionError",
+          "ERROR",
+          "TacticalSerial",
+          "COM port is in use by another application"
+        ],
+        [
+          "RMS reprojection error: 1.47px — exceeds threshold",
+          "WARNING",
+          "CalibWorker",
+          "Stereo calibration quality is poor — recapture images"
+        ],
+        [
+          "Homography computation failed — not enough points",
+          "ERROR",
+          "CalibrationMath",
+          "Laser alignment has fewer than 4 valid correspondence points"
+        ]
+      ]
+    },
+    {
+      "heading": "How Logging Works Internally",
+      "content": "NEXUS uses Python's standard <code>logging</code> module throughout. All subsystems use a named logger that is captured by the Logs tab handler:",
+      "type": "code",
+      "language": "python",
+      "code": "# Pattern used in each NEXUS module:\nimport logging\nlogger = logging.getLogger('VisionEngine')  # or 'TacticalSerial', etc.\n\n# Emitting log events:\nlogger.info(f\"Model loaded — {model_path} (task={self.task})\")\nlogger.warning(f\"No detection for {elapsed:.1f}s — returning to home position\")\nlogger.error(f\"Camera index {idx} failed to open — check CAM_R_IDX\")\n\n# In tab_logs.py — GUI handler that captures all log output:\nclass QtLogHandler(logging.Handler):\n    def __init__(self, text_widget):\n        super().__init__()\n        self.widget = text_widget\n\n    def emit(self, record):\n        msg = self.format(record)\n        # Append to QTextEdit with color based on level:\n        color = {\n            logging.INFO:    '#00e676',\n            logging.WARNING: '#facc15',\n            logging.ERROR:   '#ef4444',\n        }.get(record.levelno, '#ffffff')\n        self.widget.append(f'<span style=\"color:{color}\">{msg}</span>')"
+    },
+    {
+      "heading": "Enable Debug Logging",
+      "content": "Debug logging is disabled by default for performance. To enable verbose per-frame debug output, set the log level to DEBUG at startup:",
+      "type": "code",
+      "language": "python",
+      "code": "# In main.py — before QApplication is created:\nimport logging\nlogging.basicConfig(\n    level=logging.DEBUG,   # Change to logging.INFO for normal use\n    format='[%(asctime)s.%(msecs)03d] [%(levelname)-7s] %(name)s: %(message)s',\n    datefmt='%H:%M:%S'\n)\n\n# DEBUG log messages include:\n# [DEBUG] VisionEngine: frame_time=22.4ms inference_time=18.1ms dispatch_time=0.3ms\n# [DEBUG] GhostPredictor: raw=(641,318) kalman=(639,315) velocity=(2.1,-0.8)\n# [DEBUG] TacticalSerial: TX=b'P88.5T148.3L1\\n' RX=b'ACK:88.5,148.3'"
+    },
+    {
+      "heading": "Save Logs to File",
+      "content": "For bug reports or post-session analysis, you can redirect all logs to a file simultaneously with the UI display:",
+      "type": "code",
+      "language": "python",
+      "code": "# Add a FileHandler to also write logs to disk:\nimport logging\n\nfile_handler = logging.FileHandler('nexus_debug.log', mode='w', encoding='utf-8')\nfile_handler.setLevel(logging.DEBUG)\nfile_handler.setFormatter(logging.Formatter(\n    '[%(asctime)s.%(msecs)03d] [%(levelname)-7s] %(name)s: %(message)s',\n    datefmt='%Y-%m-%d %H:%M:%S'\n))\nlogging.getLogger().addHandler(file_handler)\n\n# nexus_debug.log will be created in the project root\n# All log events (including DEBUG) are written to it\n# Send this file when reporting bugs"
+    },
+    {
+      "heading": "Clear Logs Button",
+      "content": "The Logs tab includes a <strong>CLEAR</strong> button that wipes the visible log panel. This does not affect any log file — it only clears the in-memory display buffer. Useful when you want to isolate log events from a specific action (e.g., clearing before clicking START ENGINE to see only startup events)."
+    },
+    {
+      "heading": "Auto-Scroll Behavior",
+      "content": "The log panel automatically scrolls to the latest entry. If you scroll up to review older entries, auto-scroll pauses. It resumes once you scroll back to the bottom. You can also use the <strong>SCROLL LOCK</strong> toggle button (if present) to keep the view frozen at any position."
+    },
+    {
+      "heading": "Log Events by Subsystem",
+      "type": "table",
+      "headers": [
+        "Subsystem",
+        "Logger Name",
+        "Key Events"
+      ],
+      "rows": [
+        [
+          "AI Engine",
+          "VisionEngine",
+          "Model load, camera open, calibration load, target lock/lost, safety timeout, FPS drop warning"
+        ],
+        [
+          "Serial Link",
+          "TacticalSerial",
+          "Connect, disconnect, reconnect, heartbeat timeout, command TX, ACK RX, laser state change"
+        ],
+        [
+          "Kalman Smoother",
+          "GhostPredictor",
+          "Filter reset (on lock lost), confidence changes (debug only)"
+        ],
+        [
+          "Calibration Math",
+          "CalibrationMath",
+          "Homography compute result, reprojection error, triangulation result"
+        ],
+        [
+          "Stereo Calib Worker",
+          "PythonCalibWorker",
+          "Image pair accepted/rejected, calibration progress, RMS result, save success"
+        ],
+        [
+          "Settings / Config",
+          "config",
+          "Load from file, save to file, missing key warnings, JSON errors"
+        ],
+        [
+          "MATLAB Bridge",
+          "DataBridge",
+          "MATLAB engine start, .mat load result, conversion success/failure"
+        ]
+      ]
+    },
+    {
+      "heading": "Performance Profiling via Logs",
+      "content": "When DEBUG level is enabled, each frame emits timing information. Use this to identify bottlenecks:",
+      "type": "code",
+      "language": "python",
+      "code": "# Example DEBUG frame timing log:\n# [DEBUG] VisionEngine: ──── Frame Timing ────\n# [DEBUG] VisionEngine:   capture_time   =  8.2ms  (camera read)\n# [DEBUG] VisionEngine:   rectify_time   =  1.1ms  (stereo remap)\n# [DEBUG] VisionEngine:   inference_time = 18.4ms  (YOLO forward pass)\n# [DEBUG] VisionEngine:   kalman_time    =  0.1ms  (GhostPredictor)\n# [DEBUG] VisionEngine:   homography_time=  0.1ms  (perspectiveTransform)\n# [DEBUG] VisionEngine:   dispatch_time  =  0.3ms  (serial write)\n# [DEBUG] VisionEngine:   total_frame    = 28.2ms → 35.4 FPS\n\n# If inference_time dominates → switch to lighter model or rebuild .engine\n# If capture_time > 15ms → use USB 3.0 ports, lower resolution\n# If dispatch_time > 5ms → check for serial port lag or high baud mismatch"
+    },
+    {
+      "heading": "Common Warning Patterns and Actions",
+      "list": [
+        "<strong>Repeated 'No detection' warnings:</strong> CONFIDENCE threshold may be too high, or target is partially occluded. Lower CONFIDENCE in Settings (try 0.35).",
+        "<strong>Repeated 'Heartbeat timeout' warnings:</strong> USB cable or power issue with ESP32. Try a different cable or USB port. Check if another app is competing for the COM port.",
+        "<strong>Repeated 'Lock lost' warnings:</strong> IOU_THRESHOLD may be too high, or target is moving faster than MAX_Y_TOLERANCE allows. Increase MAX_Y_TOLERANCE or lower IOU_THRESHOLD.",
+        "<strong>Low FPS warning (< 10 FPS):</strong> Either model is too heavy for the GPU or cameras are the bottleneck. Check if using .engine vs .pt and verify TensorRT is active.",
+        "<strong>Calibration mode ⚠️ UNCALIBRATED RAW every startup:</strong> STEREO_FILE path in Settings does not point to the correct .npz — check the path and regenerate if needed."
+      ]
+    }
+  ],
+  "category": "Support"
+}
