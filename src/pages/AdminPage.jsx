@@ -63,7 +63,7 @@ const TableEditor = ({ section, updateSection }) => {
               {headers.map((h, i) => (
                 <th key={i}>
                   <div className="cms-table-cell-header">
-                    <input value={h} onChange={e => updateHeader(i, e.target.value)} placeholder={`Header ${i+1}`} />
+                    <input value={h} onChange={e => updateHeader(i, e.target.value)} placeholder={`Header ${i + 1}`} />
                     <button className="cms-icon-btn danger" onClick={() => removeCol(i)} title="Remove Column"><FiIcons.FiTrash2 size={12} /></button>
                   </div>
                 </th>
@@ -79,7 +79,7 @@ const TableEditor = ({ section, updateSection }) => {
                   </td>
                 ))}
                 <td style={{ width: 40, border: 'none', background: 'transparent', textAlign: 'center' }}>
-                   <button className="cms-icon-btn danger" onClick={() => removeRow(rIdx)} title="Remove Row"><FiIcons.FiTrash2 size={14}/></button>
+                  <button className="cms-icon-btn danger" onClick={() => removeRow(rIdx)} title="Remove Row"><FiIcons.FiTrash2 size={14} /></button>
                 </td>
               </tr>
             ))}
@@ -108,7 +108,7 @@ const ListEditor = ({ section, listKey, updateSection }) => {
     <div className="cms-complex-editor">
       {items.map((item, i) => (
         <div key={i} className="cms-list-item-edit">
-          <div className="cms-list-bullet">{listKey === 'steps' ? `${i+1}.` : '•'}</div>
+          <div className="cms-list-bullet">{listKey === 'steps' ? `${i + 1}.` : '•'}</div>
           <AutoSizeTextarea value={item} onChange={e => updateItem(i, e.target.value)} placeholder="List item content..." className="cms-input" style={{ flex: 1, minHeight: 40 }} />
           <button className="cms-icon-btn danger" onClick={() => removeItem(i)}><FiIcons.FiX /></button>
         </div>
@@ -135,12 +135,12 @@ const GalleryEditor = ({ section, updateSection }) => {
           <div key={i} className="cms-gallery-item-edit">
             <button className="cms-icon-btn danger absolute top-2 right-2" onClick={() => removeImage(i)}><FiIcons.FiX /></button>
             <div className="cms-field">
-               <label>Image URL</label>
-               <input className="cms-input" value={img.src || ''} onChange={e => updateImage(i, 'src', e.target.value)} placeholder="https://..." />
+              <label>Image URL</label>
+              <input className="cms-input" value={img.src || ''} onChange={e => updateImage(i, 'src', e.target.value)} placeholder="https://..." />
             </div>
             <div className="cms-field">
-               <label>Caption (Optional)</label>
-               <input className="cms-input" value={img.caption || ''} onChange={e => updateImage(i, 'caption', e.target.value)} placeholder="Enter caption..." />
+              <label>Caption (Optional)</label>
+              <input className="cms-input" value={img.caption || ''} onChange={e => updateImage(i, 'caption', e.target.value)} placeholder="Enter caption..." />
             </div>
           </div>
         ))}
@@ -166,14 +166,14 @@ const MediaEditor = ({ section, updateSection, type }) => {
 };
 
 const getTypeColor = (type) => {
-  switch(type) {
+  switch (type) {
     case 'code': return '#a855f7';
     case 'alert': return '#eab308';
-    case 'image': 
-    case 'video': 
+    case 'image':
+    case 'video':
     case 'gallery': return '#ec4899';
     case 'table': return '#10b981';
-    case 'list': 
+    case 'list':
     case 'steps': return '#f97316';
     case 'text':
     default: return '#3b82f6';
@@ -224,7 +224,13 @@ export default function AdminPage() {
 
   const handleSelectPage = (page) => {
     setSelectedPage(page.id);
-    setFormData(JSON.parse(JSON.stringify(page)));
+    // Load from localStorage if exists, otherwise use fresh data
+    const saved = localStorage.getItem(`nexus-cms-${page.id}`);
+    if (saved) {
+      setFormData(JSON.parse(saved));
+    } else {
+      setFormData(JSON.parse(JSON.stringify(page)));
+    }
     setHasChanges(false);
     setActiveBlock(null);
   };
@@ -232,7 +238,15 @@ export default function AdminPage() {
   const handlePreview = () => {
     if (!formData) return;
     localStorage.setItem(`nexus-cms-${formData.id}`, JSON.stringify(formData));
-    window.open(`/docs/${selectedPage}?preview=true`, '_blank');
+    
+    // Create a hidden anchor to force open in new tab (bypasses most blockers)
+    const link = document.createElement('a');
+    link.href = `/docs/${selectedPage}?preview=true`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleSave = () => {
@@ -246,9 +260,9 @@ export default function AdminPage() {
   const handleReset = async () => {
     if (!formData) return;
     if (!window.confirm(`Are you sure you want to discard local changes for "${formData.title}" and reload from the original file?`)) return;
-    
+
     localStorage.removeItem(`nexus-cms-${formData.id}`);
-    
+
     try {
       const res = await fetch(`/pages/${formData.id}.json`);
       if (res.ok) {
@@ -284,7 +298,7 @@ export default function AdminPage() {
     if (type === 'table') { newBlock.headers = ['Col 1', 'Col 2']; newBlock.rows = [['', '']]; newBlock.theme = 'default'; }
     if (type === 'steps') newBlock.steps = [''];
     if (type === 'list') newBlock.list = [''];
-    
+
     setFormData(prev => ({ ...prev, sections: [...prev.sections, newBlock] }));
     setHasChanges(true);
     setActiveBlock(formData.sections.length);
@@ -318,15 +332,15 @@ export default function AdminPage() {
     return (
       <div className="cms-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="cms-complex-editor" style={{ width: 400, padding: 40, textAlign: 'center' }}>
-           <FiIcons.FiCommand size={48} color="#38bdf8" style={{ marginBottom: 16 }} />
-           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', marginBottom: 8 }}>Nexus CMS</h2>
-           <p style={{ color: '#94a3b8', marginBottom: 32 }}>Sign in to manage documentation</p>
-           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <input type="text" placeholder="Username" className="cms-input" value={username} onChange={e => setUsername(e.target.value)} />
-              <input type="password" placeholder="Password" className="cms-input" value={password} onChange={e => setPassword(e.target.value)} />
-              <button type="submit" className="cms-btn cms-btn-primary" style={{ justifyContent: 'center', marginTop: 8 }}>Enter Editor</button>
-              {loginError && <p style={{ color: '#ef4444', fontSize: 12 }}>{loginError}</p>}
-           </form>
+          <FiIcons.FiCommand size={48} color="#38bdf8" style={{ marginBottom: 16 }} />
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', marginBottom: 8 }}>Nexus CMS</h2>
+          <p style={{ color: '#94a3b8', marginBottom: 32 }}>Sign in to manage documentation</p>
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <input type="text" placeholder="Username" className="cms-input" value={username} onChange={e => setUsername(e.target.value)} />
+            <input type="password" placeholder="Password" className="cms-input" value={password} onChange={e => setPassword(e.target.value)} />
+            <button type="submit" className="cms-btn cms-btn-primary" style={{ justifyContent: 'center', marginTop: 8 }}>Enter Editor</button>
+            {loginError && <p style={{ color: '#ef4444', fontSize: 12 }}>{loginError}</p>}
+          </form>
         </motion.div>
       </div>
     );
@@ -372,18 +386,18 @@ export default function AdminPage() {
           <div className="cms-canvas" onClick={() => setActiveBlock(null)}>
             {formData ? (
               <div className="cms-canvas-inner" onClick={e => e.stopPropagation()}>
-                <input 
+                <input
                   className="cms-page-title-input"
                   value={formData.title}
-                  onChange={e => { setFormData({...formData, title: e.target.value}); setHasChanges(true); }}
+                  onChange={e => { setFormData({ ...formData, title: e.target.value }); setHasChanges(true); }}
                   placeholder="Document Title"
                 />
 
-                <Reorder.Group axis="y" values={formData.sections} onReorder={(vals) => { setFormData({...formData, sections: vals}); setHasChanges(true); }} className="cms-block-list">
+                <Reorder.Group axis="y" values={formData.sections} onReorder={(vals) => { setFormData({ ...formData, sections: vals }); setHasChanges(true); }} className="cms-block-list">
                   <AnimatePresence>
                     {formData.sections.map((block, idx) => (
-                      <Reorder.Item 
-                        key={block.id} 
+                      <Reorder.Item
+                        key={block.id}
                         value={block}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -391,13 +405,13 @@ export default function AdminPage() {
                         className={`cms-block-card ${activeBlock === idx ? 'active' : ''}`}
                         onClick={() => setActiveBlock(idx)}
                       >
-                        <div className="cms-block-card-inner" style={{ 
+                        <div className="cms-block-card-inner" style={{
                           backgroundColor: block.bgStyle === 'muted' ? '#0f172a' : 'var(--cms-panel)',
                           borderLeft: `4px solid ${getTypeColor(block.type)}`
                         }}>
                           <div className="cms-block-header">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              <div className="cms-block-drag"><FiIcons.FiMoreVertical size={16}/></div>
+                              <div className="cms-block-drag"><FiIcons.FiMoreVertical size={16} /></div>
                               <span className="cms-block-type" style={{ color: getTypeColor(block.type) }}>
                                 {(block.type || 'text').toUpperCase()}
                               </span>
@@ -406,17 +420,17 @@ export default function AdminPage() {
                           </div>
 
                           <div className="cms-block-body">
-                            <input 
+                            <input
                               className="cms-input cms-h2"
                               value={block.heading || ''}
                               onChange={e => updateBlock(idx, 'heading', e.target.value)}
                               placeholder="Section Heading (Optional)"
                             />
-                            
+
                             {['text', 'list', 'steps'].includes(block.type) && (
                               <div style={{ marginBottom: 12 }}>
                                 {block.type !== 'text' && <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--cms-text-muted)', marginBottom: 6, fontWeight: 600 }}>Introduction Paragraph (Optional)</label>}
-                                <AutoSizeTextarea 
+                                <AutoSizeTextarea
                                   className="cms-input cms-textarea"
                                   value={block.content || ''}
                                   onChange={e => updateBlock(idx, 'content', e.target.value)}
@@ -427,20 +441,20 @@ export default function AdminPage() {
 
                             {block.type === 'code' && (
                               <div className="cms-complex-editor">
-                                 <input className="cms-input mb-2" style={{ fontFamily: 'monospace', color: '#38bdf8' }} placeholder="Language (e.g., python, js)" value={block.language || ''} onChange={e => updateBlock(idx, 'language', e.target.value)} />
-                                 <AutoSizeTextarea className="cms-input cms-textarea cms-code-editor" value={block.code || ''} onChange={e => updateBlock(idx, 'code', e.target.value)} placeholder="Paste code snippet here..." />
+                                <input className="cms-input mb-2" style={{ fontFamily: 'monospace', color: '#38bdf8' }} placeholder="Language (e.g., python, js)" value={block.language || ''} onChange={e => updateBlock(idx, 'language', e.target.value)} />
+                                <AutoSizeTextarea className="cms-input cms-textarea cms-code-editor" value={block.code || ''} onChange={e => updateBlock(idx, 'code', e.target.value)} placeholder="Paste code snippet here..." />
                               </div>
                             )}
 
                             {block.type === 'alert' && (
                               <div className="cms-complex-editor" style={{ borderLeft: `4px solid ${block.alertType === 'warning' ? '#f59e0b' : block.alertType === 'error' ? '#ef4444' : '#38bdf8'}` }}>
-                                 <select className="cms-input mb-2" value={block.alertType || 'info'} onChange={e => updateBlock(idx, 'alertType', e.target.value)}>
-                                    <option value="info">Info</option>
-                                    <option value="warning">Warning</option>
-                                    <option value="error">Error</option>
-                                    <option value="success">Success</option>
-                                 </select>
-                                 <AutoSizeTextarea className="cms-input cms-textarea" value={block.alertContent || ''} onChange={e => updateBlock(idx, 'alertContent', e.target.value)} placeholder="Alert message..." />
+                                <select className="cms-input mb-2" value={block.alertType || 'info'} onChange={e => updateBlock(idx, 'alertType', e.target.value)}>
+                                  <option value="info">Info</option>
+                                  <option value="warning">Warning</option>
+                                  <option value="error">Error</option>
+                                  <option value="success">Success</option>
+                                </select>
+                                <AutoSizeTextarea className="cms-input cms-textarea" value={block.alertContent || ''} onChange={e => updateBlock(idx, 'alertContent', e.target.value)} placeholder="Alert message..." />
                               </div>
                             )}
 
@@ -488,10 +502,10 @@ export default function AdminPage() {
 
                 <div className="cms-prop-group">
                   <div className="cms-prop-title"><FiIcons.FiGlobe size={14} /> Page Settings</div>
-                  
+
                   <div className="cms-field">
                     <label>Status</label>
-                    <select className="cms-input" value={formData.status || 'published'} onChange={e => { setFormData({...formData, status: e.target.value}); setHasChanges(true); }}>
+                    <select className="cms-input" value={formData.status || 'published'} onChange={e => { setFormData({ ...formData, status: e.target.value }); setHasChanges(true); }}>
                       <option value="published">Published 🟢</option>
                       <option value="draft">Draft 🟡</option>
                     </select>
@@ -499,14 +513,14 @@ export default function AdminPage() {
 
                   <div className="cms-field">
                     <label>Category</label>
-                    <select className="cms-input" value={formData.category || 'Basics'} onChange={e => { setFormData({...formData, category: e.target.value}); setHasChanges(true); }}>
+                    <select className="cms-input" value={formData.category || 'Basics'} onChange={e => { setFormData({ ...formData, category: e.target.value }); setHasChanges(true); }}>
                       {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                     </select>
                   </div>
-                  
+
                   <div className="cms-field">
                     <label>SEO Description</label>
-                    <AutoSizeTextarea className="cms-input cms-textarea" value={formData.description || ''} onChange={e => { setFormData({...formData, description: e.target.value}); setHasChanges(true); }} placeholder="Meta description for search engines..." />
+                    <AutoSizeTextarea className="cms-input cms-textarea" value={formData.description || ''} onChange={e => { setFormData({ ...formData, description: e.target.value }); setHasChanges(true); }} placeholder="Meta description for search engines..." />
                   </div>
 
                   <div className="cms-field" style={{ marginTop: 24 }}>
@@ -523,7 +537,7 @@ export default function AdminPage() {
                       <div style={{ width: 40, height: 40, borderRadius: 8, background: '#020617', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
                         <IconRenderer iconName={formData.icon} size={20} />
                       </div>
-                      <input className="cms-input" style={{ flex: 1 }} value={formData.icon || ''} onChange={e => { setFormData({...formData, icon: e.target.value}); setHasChanges(true); }} />
+                      <input className="cms-input" style={{ flex: 1 }} value={formData.icon || ''} onChange={e => { setFormData({ ...formData, icon: e.target.value }); setHasChanges(true); }} />
                     </div>
                   </div>
                 </div>
@@ -533,56 +547,56 @@ export default function AdminPage() {
                 {activeBlock !== null && formData.sections[activeBlock] ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="cms-prop-group">
                     <div className="cms-prop-title"><FiIcons.FiBox size={14} /> Block Properties</div>
-                    
+
                     <div className="cms-field">
-                       <label>Block Type</label>
-                       <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: '0.85rem' }}>{(formData.sections[activeBlock].type || 'TEXT').toUpperCase()}</div>
+                      <label>Block Type</label>
+                      <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: '0.85rem' }}>{(formData.sections[activeBlock].type || 'TEXT').toUpperCase()}</div>
                     </div>
 
                     <div className="cms-field mt-2">
-                       <label>Background Style</label>
-                       <select className="cms-input" value={formData.sections[activeBlock].bgStyle || 'none'} onChange={e => updateBlock(activeBlock, 'bgStyle', e.target.value)}>
-                          <option value="none">Transparent</option>
-                          <option value="muted">Muted Dark Box</option>
-                          <option value="bordered">Outlined Box</option>
-                       </select>
+                      <label>Background Style</label>
+                      <select className="cms-input" value={formData.sections[activeBlock].bgStyle || 'none'} onChange={e => updateBlock(activeBlock, 'bgStyle', e.target.value)}>
+                        <option value="none">Transparent</option>
+                        <option value="muted">Muted Dark Box</option>
+                        <option value="bordered">Outlined Box</option>
+                      </select>
                     </div>
 
                     {formData.sections[activeBlock].type === 'table' && (
                       <div className="cms-field">
-                         <label>Table Theme</label>
-                         <select className="cms-input" value={formData.sections[activeBlock].theme || 'default'} onChange={e => updateBlock(activeBlock, 'theme', e.target.value)}>
-                            <option value="default">Default Grid</option>
-                            <option value="striped">Striped Rows</option>
-                            <option value="minimal">Minimal (No Borders)</option>
-                         </select>
+                        <label>Table Theme</label>
+                        <select className="cms-input" value={formData.sections[activeBlock].theme || 'default'} onChange={e => updateBlock(activeBlock, 'theme', e.target.value)}>
+                          <option value="default">Default Grid</option>
+                          <option value="striped">Striped Rows</option>
+                          <option value="minimal">Minimal (No Borders)</option>
+                        </select>
                       </div>
                     )}
 
                     {formData.sections[activeBlock].type === 'gallery' && (
                       <div className="cms-field">
-                         <label>Gallery Columns</label>
-                         <select className="cms-input" value={formData.sections[activeBlock].layout || 'grid-2'} onChange={e => updateBlock(activeBlock, 'layout', e.target.value)}>
-                            <option value="grid-1">1 Column (Full Width)</option>
-                            <option value="grid-2">2 Columns Grid</option>
-                            <option value="grid-3">3 Columns Grid</option>
-                         </select>
+                        <label>Gallery Columns</label>
+                        <select className="cms-input" value={formData.sections[activeBlock].layout || 'grid-2'} onChange={e => updateBlock(activeBlock, 'layout', e.target.value)}>
+                          <option value="grid-1">1 Column (Full Width)</option>
+                          <option value="grid-2">2 Columns Grid</option>
+                          <option value="grid-3">3 Columns Grid</option>
+                        </select>
                       </div>
                     )}
 
                     {['image', 'video'].includes(formData.sections[activeBlock].type) && (
                       <div className="cms-field">
-                         <label>Media Alignment</label>
-                         <select className="cms-input" value={formData.sections[activeBlock].align || 'center'} onChange={e => updateBlock(activeBlock, 'align', e.target.value)}>
-                            <option value="left">Align Left</option>
-                            <option value="center">Align Center</option>
-                            <option value="right">Align Right</option>
-                         </select>
+                        <label>Media Alignment</label>
+                        <select className="cms-input" value={formData.sections[activeBlock].align || 'center'} onChange={e => updateBlock(activeBlock, 'align', e.target.value)}>
+                          <option value="left">Align Left</option>
+                          <option value="center">Align Center</option>
+                          <option value="right">Align Right</option>
+                        </select>
                       </div>
                     )}
 
                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', background: '#020617', padding: 16, borderRadius: 8, border: '1px solid #334155', marginTop: 10 }}>
-                       <FiIcons.FiInfo style={{ marginBottom: 4, color: '#38bdf8' }} /> You can edit the content of this block directly in the main canvas.
+                      <FiIcons.FiInfo style={{ marginBottom: 4, color: '#38bdf8' }} /> You can edit the content of this block directly in the main canvas.
                     </div>
                   </motion.div>
                 ) : (
