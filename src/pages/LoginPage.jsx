@@ -11,7 +11,7 @@ export default function LoginPage({ onLogin }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Hardcoded credentials for client-side protection
-    if (username === 'admin' && password === 'nexus-admin-2026') {
+    if (username === 'admin' && password === 'nexus2026') {
       onLogin();
     } else {
       setError('Invalid username or password');
@@ -26,35 +26,35 @@ export default function LoginPage({ onLogin }) {
           <h2>Nexus Studio</h2>
           <p>Sign in to access the CMS Editor</p>
         </div>
-        
-        {error && <div className="login-error"><FiIcons.FiAlertCircle style={{ marginRight: 6, verticalAlign: 'middle' }}/> {error}</div>}
+
+        {error && <div className="login-error"><FiIcons.FiAlertCircle style={{ marginRight: 6, verticalAlign: 'middle' }} /> {error}</div>}
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="login-field">
             <label>Username</label>
-            <input 
-              type="text" 
-              className="login-input" 
-              placeholder="Enter your username" 
+            <input
+              type="text"
+              className="login-input"
+              placeholder="Enter your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoFocus
             />
           </div>
-          
+
           <div className="login-field">
             <label>Password</label>
-            <input 
-              type="password" 
-              className="login-input" 
-              placeholder="••••••••" 
+            <input
+              type="password"
+              className="login-input"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
           <button type="submit" className="login-btn">
-            Sign In <FiIcons.FiArrowRight style={{ marginLeft: 4 }}/>
+            Sign In <FiIcons.FiArrowRight style={{ marginLeft: 4 }} />
           </button>
         </form>
       </div>
