@@ -2,14 +2,33 @@
   "id": "landing",
   "title": "Nexus Guardian | Advanced Edge AI Vision Ecosystem",
   "category": "Configuration",
+  "navbar": [
+    {
+      "label": "Home",
+      "href": "#home"
+    },
+    {
+      "label": "Features",
+      "href": "#feature"
+    },
+    {
+      "label": "Architecture",
+      "href": "#process"
+    },
+    {
+      "label": "Documentation",
+      "href": "/docs/getting-started",
+      "type": "link"
+    }
+  ],
   "sections": [
     {
       "id": "hero-section",
       "type": "hero-premium",
       "badge": "V2.2 Stable Release | Ultra-Low Latency",
-      "heading": "The Intelligence Layer for <br/> <span class='xb-title--typewriter'><span class='xb-item--text is-active text-gradient'>Next-Gen Vision Hardware</span></span>",
-      "content": "Deploy real-time AI inference, sub-pixel stereo triangulation, and precision hardware control with a unified engineering dashboard. Built for the most demanding deep tech environments.",
-      "primaryBtn": "Launch Dashboard",
+      "heading": "Smart AI Vision & <br/> <span class='xb-title--typewriter'><span class='xb-item--text is-active text-gradient'>Precision Targeting</span></span>",
+      "content": "A powerful, easy-to-use dashboard to connect AI vision models with your physical hardware. Track targets in real-time, calculate depth accurately, and control servos with zero delay.",
+      "primaryBtn": "Read the Docs",
       "secondaryBtn": "Explore Architecture",
       "heroVideo": "/assets/media/Laser-Project.mp4"
     },

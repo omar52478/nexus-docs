@@ -646,9 +646,11 @@ export default function LandingPage() {
                             <div className="main-menu__wrap ul_li navbar navbar-expand-lg">
                                 <nav className="main-menu collapse navbar-collapse">
                                     <ul>
-                                        <li className={activeSection === 'home' ? 'active' : ''}><a href="#home" onClick={(e) => handleSmoothScroll(e, 'home')}>Home</a></li>
-                                        <li className={activeSection === 'feature' ? 'active' : ''}><a href="#feature" onClick={(e) => handleSmoothScroll(e, 'feature')}>Features</a></li>
-                                        <li className={activeSection === 'process' ? 'active' : ''}><a href="#process" onClick={(e) => handleSmoothScroll(e, 'process')}>Architecture</a></li>
+                                        {data?.navbar?.filter(link => link.type !== 'link').map((link, idx) => (
+                                          <li key={idx} className={activeSection === link.href.replace('#', '') ? 'active' : ''}>
+                                            <a href={link.href} onClick={(e) => handleSmoothScroll(e, link.href.replace('#', ''))}>{link.label}</a>
+                                          </li>
+                                        ))}
                                     </ul>
                                 </nav>
                             </div>
@@ -702,10 +704,15 @@ export default function LandingPage() {
                         </div>
                         <button className="close-menu" onClick={() => setIsMenuOpen(false)} style={{ fontSize: '2.5rem' }}>&times;</button>
                         <ul className="mobile-menu-links">
-                            <li><a href="#home" onClick={(e) => handleSmoothScroll(e, 'home')}>Home</a></li>
-                            <li><Link to="/docs/getting-started" onClick={() => setIsMenuOpen(false)}>Documentation</Link></li>
-                            <li><a href="#feature" onClick={(e) => handleSmoothScroll(e, 'feature')}>Features</a></li>
-                            <li><a href="#process" onClick={(e) => handleSmoothScroll(e, 'process')}>Architecture</a></li>
+                            {data?.navbar?.map((link, idx) => (
+                              <li key={idx}>
+                                {link.type === 'link' ? (
+                                  <Link to={link.href} onClick={() => setIsMenuOpen(false)}>{link.label}</Link>
+                                ) : (
+                                  <a href={link.href} onClick={(e) => handleSmoothScroll(e, link.href.replace('#', ''))}>{link.label}</a>
+                                )}
+                              </li>
+                            ))}
                         </ul>
                     </motion.div>
                 )}
