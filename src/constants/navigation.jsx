@@ -95,6 +95,10 @@ export const CATEGORIES = [
     "icon": "FiSettings",
     "links": [
       {
+        "id": "landing",
+        "title": "Nexus Guardian | Advanced Edge AI Vision Ecosystem"
+      },
+      {
         "id": "settings",
         "title": "Settings"
       }
@@ -185,6 +189,11 @@ export const ALL_PAGES = [
     "id": "installation",
     "title": "Installation",
     "category": "Basics"
+  },
+  {
+    "id": "landing",
+    "title": "Nexus Guardian | Advanced Edge AI Vision Ecosystem",
+    "category": "Configuration"
   },
   {
     "id": "laser-alignment",

@@ -150,6 +150,150 @@ const GalleryEditor = ({ section, updateSection }) => {
   );
 };
 
+// --- Landing Page Specialized Editors ---
+
+const HeroPremiumEditor = ({ section, updateSection }) => (
+  <div className="cms-complex-editor">
+    <div className="mb-4">
+      <label className="cms-label">Badge</label>
+      <input className="cms-input" value={section.badge || ''} onChange={e => updateSection('badge', e.target.value)} placeholder="e.g. V2.2 Stable Release" />
+    </div>
+    <div className="mb-4">
+      <label className="cms-label">Main Content Paragraph</label>
+      <AutoSizeTextarea className="cms-input" value={section.content || ''} onChange={e => updateSection('content', e.target.value)} placeholder="Hero paragraph text..." />
+    </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="mb-4">
+      <div>
+        <label className="cms-label">Primary Button Text</label>
+        <input className="cms-input" value={section.primaryBtn || ''} onChange={e => updateSection('primaryBtn', e.target.value)} />
+      </div>
+      <div>
+        <label className="cms-label">Secondary Button Text</label>
+        <input className="cms-input" value={section.secondaryBtn || ''} onChange={e => updateSection('secondaryBtn', e.target.value)} />
+      </div>
+    </div>
+    <div>
+      <label className="cms-label">Hero Video Path</label>
+      <input className="cms-input" value={section.heroVideo || ''} onChange={e => updateSection('heroVideo', e.target.value)} />
+    </div>
+  </div>
+);
+
+const FeaturesGridEditor = ({ section, updateSection }) => {
+  const items = section.items || [];
+  const updateItem = (i, field, val) => {
+    const next = [...items];
+    next[i] = { ...next[i], [field]: val };
+    updateSection('items', next);
+  };
+  return (
+    <div className="cms-complex-editor">
+      <div style={{ display: 'grid', gap: '20px' }}>
+        {items.map((item, i) => (
+          <div key={i} className="cms-item-card-premium">
+            <div className="cms-item-header">
+              <span className="cms-item-badge">Feature Item #{i + 1}</span>
+              <button 
+                className="cms-icon-btn danger" 
+                title="Delete Feature"
+                onClick={() => updateSection('items', items.filter((_, idx) => idx !== i))}
+              >
+                <FiIcons.FiTrash2 size={14} />
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px', marginBottom: '12px' }}>
+              <div className="cms-field">
+                <label>Icon ID</label>
+                <input className="cms-input" value={item.icon || ''} onChange={e => updateItem(i, 'icon', e.target.value)} placeholder="e.g. FiZap" />
+              </div>
+              <div className="cms-field">
+                <label>Title</label>
+                <input className="cms-input" value={item.title || ''} onChange={e => updateItem(i, 'title', e.target.value)} placeholder="Feature Title" />
+              </div>
+            </div>
+            <div className="cms-field">
+              <label>Description</label>
+              <AutoSizeTextarea className="cms-input" value={item.desc || ''} onChange={e => updateItem(i, 'desc', e.target.value)} placeholder="Describe the feature..." />
+            </div>
+          </div>
+        ))}
+      </div>
+      <button className="cms-btn-primary mt-4" style={{ width: '100%' }} onClick={() => updateSection('items', [...items, { icon: 'FiZap', title: '', desc: '' }])}>
+        <FiIcons.FiPlus size={16} /> 
+        <span>Add New Feature</span>
+      </button>
+    </div>
+  );
+};
+
+const SplitHorizontalEditor = ({ section, updateSection }) => {
+  const block = section.block || {};
+  const updateBlockSub = (field, val) => updateSection('block', { ...block, [field]: val });
+  return (
+    <div className="cms-complex-editor">
+      <label className="cms-label">Block Title</label>
+      <input className="cms-input mb-2" value={block.title || ''} onChange={e => updateBlockSub('title', e.target.value)} placeholder="Block Title" />
+      <label className="cms-label">Block Description</label>
+      <AutoSizeTextarea className="cms-input mb-2" value={block.desc || ''} onChange={e => updateBlockSub('desc', e.target.value)} placeholder="Block Description" />
+      <label className="cms-label">Image Path</label>
+      <input className="cms-input mb-2" value={block.image || ''} onChange={e => updateBlockSub('image', e.target.value)} placeholder="Image Path" />
+      <label className="cms-label">Button Text</label>
+      <input className="cms-input" value={block.btnText || ''} onChange={e => updateBlockSub('btnText', e.target.value)} placeholder="Button Text" />
+    </div>
+  );
+};
+
+const SplitVerticalVideoEditor = ({ section, updateSection }) => {
+  const blocks = section.blocks || [];
+  const updateBlockItem = (i, field, val) => {
+    const next = [...blocks];
+    next[i] = { ...next[i], [field]: val };
+    updateSection('blocks', next);
+  };
+  return (
+    <div className="cms-complex-editor">
+      {blocks.map((b, i) => (
+        <div key={i} style={{ padding: 12, border: '1px solid var(--cms-border)', borderRadius: 8, marginBottom: 12, background: 'var(--cms-surface)' }}>
+          <div className="cms-nav-title mb-2">Block {i+1} ({b.type})</div>
+          <input className="cms-input mb-2" value={b.title || ''} onChange={e => updateBlockItem(i, 'title', e.target.value)} placeholder="Title" />
+          <AutoSizeTextarea className="cms-input mb-2" value={b.desc || ''} onChange={e => updateBlockItem(i, 'desc', e.target.value)} placeholder="Description" />
+          <input className="cms-input" value={b.type === 'video-vertical' ? b.videoSrc : b.image} onChange={e => updateBlockItem(i, b.type === 'video-vertical' ? 'videoSrc' : 'image', e.target.value)} placeholder={b.type === 'video-vertical' ? "Video Path" : "Image Path"} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const SplitGridBottomEditor = ({ section, updateSection }) => {
+  const top = section.topBlock || {};
+  const bottoms = section.bottomBlocks || [];
+  const updateTop = (f, v) => updateSection('topBlock', { ...top, [f]: v });
+  const updateBottom = (i, f, v) => {
+    const next = [...bottoms];
+    next[i] = { ...next[i], [f]: v };
+    updateSection('bottomBlocks', next);
+  };
+  return (
+    <div className="cms-complex-editor">
+      <div className="cms-nav-title mb-2">Top Wide Block</div>
+      <input className="cms-input mb-2" value={top.title || ''} onChange={e => updateTop('title', e.target.value)} placeholder="Title" />
+      <AutoSizeTextarea className="cms-input mb-2" value={top.desc || ''} onChange={e => updateTop('desc', e.target.value)} placeholder="Description" />
+      <input className="cms-input mb-4" value={top.image || ''} onChange={e => updateTop('image', e.target.value)} placeholder="Image Path" />
+      
+      <div className="cms-nav-title mb-2">Bottom Grid Blocks</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {bottoms.map((b, i) => (
+          <div key={i} style={{ padding: 8, border: '1px solid var(--cms-border)', borderRadius: 8, background: 'var(--cms-surface)' }}>
+            <input className="cms-input mb-2" value={b.title || ''} onChange={e => updateBottom(i, 'title', e.target.value)} placeholder="Title" />
+            <AutoSizeTextarea className="cms-input mb-2" value={b.desc || ''} onChange={e => updateBottom(i, 'desc', e.target.value)} placeholder="Description" />
+            <input className="cms-input" value={b.image || ''} onChange={e => updateBottom(i, 'image', e.target.value)} placeholder="Image Path" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const MediaEditor = ({ section, updateSection, type }) => {
   return (
     <div className="cms-complex-editor">
@@ -193,6 +337,11 @@ export default function AdminPage() {
   const [formData, setFormData] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [activeBlock, setActiveBlock] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    document.title = "Nexus Admin";
+  }, []);
 
   useEffect(() => {
     Promise.all(
@@ -241,7 +390,7 @@ export default function AdminPage() {
     
     // Create a hidden anchor to force open in new tab (bypasses most blockers)
     const link = document.createElement('a');
-    link.href = `/docs/${selectedPage}?preview=true`;
+    link.href = selectedPage === 'landing' ? `/?preview=true` : `/docs/${selectedPage}?preview=true`;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
@@ -332,8 +481,8 @@ export default function AdminPage() {
     return (
       <div className="cms-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="cms-complex-editor" style={{ width: 400, padding: 40, textAlign: 'center' }}>
-          <FiIcons.FiCommand size={48} color="#38bdf8" style={{ marginBottom: 16 }} />
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', marginBottom: 8 }}>Nexus CMS</h2>
+          <img src="/assets/images/logo.png" style={{ height: 48, width: 'auto', marginBottom: 16 }} alt="Nexus" />
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', marginBottom: 8 }}>Nexus Admin</h2>
           <p style={{ color: '#94a3b8', marginBottom: 32 }}>Sign in to manage documentation</p>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <input type="text" placeholder="Username" className="cms-input" value={username} onChange={e => setUsername(e.target.value)} />
@@ -348,15 +497,34 @@ export default function AdminPage() {
 
   return (
     <div className="cms-layout">
+      {/* Sidebar Overlay for Mobile */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="cms-mobile-overlay" 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <aside className="cms-sidebar">
-        <div className="cms-brand"><FiIcons.FiCommand size={20} /> Nexus CMS</div>
+      <aside className={`cms-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="cms-brand">
+          <img src="/assets/images/logo.png" style={{ height: 24, width: 'auto' }} alt="Logo" /> 
+          <span>Nexus Admin</span>
+          <button className="cms-close-sidebar d-md-none" onClick={() => setIsSidebarOpen(false)}>
+            <FiIcons.FiX size={20} />
+          </button>
+        </div>
         <div className="cms-nav">
           {CATEGORIES.map(cat => (
             <div key={cat.name} className="cms-nav-group">
               <div className="cms-nav-title">{cat.name}</div>
               {pages.filter(p => (p.category || 'Basics') === cat.name).map(p => (
-                <div key={p.id} className={`cms-nav-item ${selectedPage === p.id ? 'active' : ''}`} onClick={() => handleSelectPage(p)}>
+                <div key={p.id} className={`cms-nav-item ${selectedPage === p.id ? 'active' : ''}`} onClick={() => { handleSelectPage(p); setIsSidebarOpen(false); }}>
                   <IconRenderer iconName={p.icon} size={16} /> {p.title}
                 </div>
               ))}
@@ -369,15 +537,19 @@ export default function AdminPage() {
       <main className="cms-main">
         {/* Topbar */}
         <header className="cms-topbar">
+          <div className="cms-hamburger" onClick={() => setIsSidebarOpen(true)}>
+            <FiIcons.FiMenu size={22} />
+          </div>
           <div className="cms-breadcrumb">
             <span className="cms-breadcrumb-cat">{formData?.category || 'Category'}</span>
             <span className="cms-breadcrumb-sep"><FiIcons.FiChevronRight size={14} /></span>
             <span className="cms-breadcrumb-page">{formData?.title || 'Page'}</span>
           </div>
           <div className="cms-topbar-actions">
-            {hasChanges && <span style={{ fontSize: 12, color: '#38bdf8', fontWeight: 600, paddingRight: 10 }}>● Unsaved Changes</span>}
-            <button className="cms-btn cms-btn-secondary" onClick={handlePreview}><FiIcons.FiExternalLink /> Preview</button>
-            <button className="cms-btn cms-btn-primary" onClick={handleSave} disabled={!hasChanges} style={{ opacity: hasChanges ? 1 : 0.5 }}><FiIcons.FiSave /> Publish</button>
+            {hasChanges && <span style={{ fontSize: 12, color: '#38bdf8', fontWeight: 600, paddingRight: 10 }} className="d-none d-md-inline">● Unsaved Changes</span>}
+            <button className="cms-btn cms-btn-secondary" onClick={() => window.open('/', '_blank')}><FiIcons.FiHome /> <span className="d-none d-md-inline">View Home</span></button>
+            <button className="cms-btn cms-btn-secondary" onClick={handlePreview}><FiIcons.FiExternalLink /> <span className="d-none d-md-inline">Preview</span></button>
+            <button className="cms-btn cms-btn-primary" onClick={handleSave} disabled={!hasChanges} style={{ opacity: hasChanges ? 1 : 0.5 }}><FiIcons.FiSave /> <span className="d-none d-md-inline">Publish</span></button>
           </div>
         </header>
 
@@ -463,6 +635,13 @@ export default function AdminPage() {
                             {block.type === 'steps' && <ListEditor section={block} listKey="steps" updateSection={(f, v) => updateBlock(idx, f, v)} />}
                             {block.type === 'gallery' && <GalleryEditor section={block} updateSection={(f, v) => updateBlock(idx, f, v)} />}
                             {(block.type === 'image' || block.type === 'video') && <MediaEditor type={block.type} section={block} updateSection={(f, v) => updateBlock(idx, f, v)} />}
+                            
+                            {/* Landing Page Editors */}
+                            {block.type === 'hero-premium' && <HeroPremiumEditor section={block} updateSection={(f, v) => updateBlock(idx, f, v)} />}
+                            {block.type === 'features-6-grid' && <FeaturesGridEditor section={block} updateSection={(f, v) => updateBlock(idx, f, v)} />}
+                            {block.type === 'split-horizontal' && <SplitHorizontalEditor section={block} updateSection={(f, v) => updateBlock(idx, f, v)} />}
+                            {block.type === 'split-vertical-video' && <SplitVerticalVideoEditor section={block} updateSection={(f, v) => updateBlock(idx, f, v)} />}
+                            {block.type === 'split-grid-bottom' && <SplitGridBottomEditor section={block} updateSection={(f, v) => updateBlock(idx, f, v)} />}
 
                           </div>
                         </div>

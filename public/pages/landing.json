@@ -1,0 +1,105 @@
+{
+  "id": "landing",
+  "title": "Nexus Guardian | Advanced Edge AI Vision Ecosystem",
+  "category": "Configuration",
+  "sections": [
+    {
+      "id": "hero-section",
+      "type": "hero-premium",
+      "badge": "V2.2 Stable Release | Ultra-Low Latency",
+      "heading": "The Intelligence Layer for <br/> <span class='xb-title--typewriter'><span class='xb-item--text is-active text-gradient'>Next-Gen Vision Hardware</span></span>",
+      "content": "Deploy real-time AI inference, sub-pixel stereo triangulation, and precision hardware control with a unified engineering dashboard. Built for the most demanding deep tech environments.",
+      "primaryBtn": "Launch Dashboard",
+      "secondaryBtn": "Explore Architecture",
+      "heroVideo": "/assets/media/Laser-Project.mp4"
+    },
+    {
+      "id": "features-grid",
+      "type": "features-6-grid",
+      "heading": "Engineered for Performance",
+      "items": [
+        {
+          "icon": "FiZap",
+          "title": "Real-time Inference",
+          "desc": "Optimize YOLO11x-Pose models with TensorRT to achieve 30+ FPS on edge devices with minimal thermal footprint."
+        },
+        {
+          "icon": "FiTarget",
+          "title": "Sub-pixel Precision",
+          "desc": "Advanced homography mapping translates digital coordinates to physical servo movements with micro-degree accuracy."
+        },
+        {
+          "icon": "FiActivity",
+          "title": "Kalman Smoothing",
+          "desc": "Integrated GhostPredictor™ technology eliminates hardware jitter and predicts object trajectories in real-time."
+        },
+        {
+          "icon": "FiVideo",
+          "title": "Stereo Triangulation",
+          "desc": "Military-grade depth estimation using dual epipolar-aligned feeds for accurate spatial positioning."
+        },
+        {
+          "icon": "FiCpu",
+          "title": "Hardware Bridge",
+          "desc": "Direct-to-metal serial dispatch at 66Hz, ensuring zero-latency control for ESP32 and industrial microcontrollers."
+        },
+        {
+          "icon": "FiShield",
+          "title": "Audited Security",
+          "desc": "Transparent, open-source architecture with fully audited communication protocols for secure field deployment."
+        }
+      ]
+    },
+    {
+      "id": "showcase-calibration",
+      "type": "split-horizontal",
+      "heading": "Scientific Precision in <br/> <span class='text-gradient'>Every Calculation</span>",
+      "block": {
+        "title": "Unrivaled Stereo Calibration",
+        "desc": "Seamlessly integrate Python-based matrices with MATLAB engines. Our pipeline crushes epipolar errors and locks intrinsic parameters with enterprise-grade stability.",
+        "btnText": "View Vision API",
+        "image": "/assets/gui/py-calibration.jpeg"
+      }
+    },
+    {
+      "id": "showcase-tracking",
+      "type": "split-vertical-video",
+      "blocks": [
+        {
+          "type": "video-vertical",
+          "title": "Live Pose Telemetry",
+          "desc": "Visualize real-time AI confidence streams and skeletal extraction directly from the live hardware feed.",
+          "videoSrc": "/assets/media/Laser-Project.mp4"
+        },
+        {
+          "type": "image-horizontal",
+          "title": "Dynamic Laser Mapping",
+          "desc": "Map coordinate systems on the fly. Click, steer, and compile homography matrices instantly through our intuitive spatial interface.",
+          "image": "/assets/gui/laser alignment.jpeg"
+        }
+      ]
+    },
+    {
+      "id": "showcase-hardware",
+      "type": "split-grid-bottom",
+      "topBlock": {
+        "title": "Transparent Serial Architecture",
+        "desc": "Monitor every heartbeat. Our hardware console provides full visibility into ESP32 communication, payload integrity, and real-time servo feedback loops.",
+        "btnText": "Hardware Docs",
+        "image": "/assets/gui/matlab engine.jpeg"
+      },
+      "bottomBlocks": [
+        {
+          "title": "Tactical Control",
+          "desc": "Manual override for pan/tilt servos and precision laser GPIO toggles.",
+          "image": "/assets/gui/hardware.jpeg"
+        },
+        {
+          "title": "Edge Configuration",
+          "desc": "Hot-swappable AI weights and dynamic filtering thresholds for any environment.",
+          "image": "/assets/gui/settings.jpeg"
+        }
+      ]
+    }
+  ]
+}

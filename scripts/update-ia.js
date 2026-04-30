@@ -20,6 +20,7 @@ const IA_MAPPING = {
   'matlab-engine': { category: 'Engineering' },
   'deployment': { category: 'Engineering' },
   'settings': { category: 'Configuration' },
+  'landing': { category: 'Configuration' },
   'performance': { category: 'Optimization' },
   'troubleshooting': { category: 'Support' },
   'logs-debug': { category: 'Support' },

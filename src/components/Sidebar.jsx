@@ -18,6 +18,32 @@ export default function Sidebar({ isOpen, closeMobile }) {
   return (
     <aside className={`sidebar glass ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-content">
+        <div className="sidebar-group" style={{ marginBottom: '24px' }}>
+          <button 
+            className="sidebar-download-btn" 
+            onClick={() => window.open('https://drive.google.com/file/d/19ZGXVUwLJnPlwk9FzTxDWMnc78GTN-6J/view', '_blank')}
+            style={{ 
+              width: '100%', 
+              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(129, 140, 248, 0.15) 100%)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              marginBottom: '16px'
+            }}
+          >
+            <div className="btn-icon-wrap" style={{ background: '#38bdf8', color: '#020008' }}>
+              <FiIcons.FiDownload />
+            </div>
+            <div className="btn-text-wrap">
+              <span className="btn-label">LATEST STABLE</span>
+              <span className="btn-title">Download v2.2 (.exe)</span>
+            </div>
+          </button>
+
+          <NavLink to="/" className="sidebar-link" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+            <span className="page-icon">🏠</span>
+            <span style={{ fontWeight: 700 }}>Back to Home</span>
+          </NavLink>
+        </div>
+
         {CATEGORIES.map((cat, idx) => (
           <div key={idx} className="sidebar-group">
             <h4 className="sidebar-group-label">

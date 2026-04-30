@@ -18,8 +18,8 @@
 
 .cms-layout {
   display: flex;
-  height: calc(100vh - var(--nav-height, 70px));
-  margin-top: var(--nav-height, 70px);
+  height: 100vh;
+  margin-top: 0;
   width: 100vw;
   background-color: var(--cms-bg);
   color: var(--cms-text);
@@ -112,7 +112,60 @@
 .cms-brand { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 24px; font-weight: 800; font-size: 1.05rem; border-bottom: 1px solid var(--cms-border); color: var(--cms-accent); letter-spacing: 0.5px; }
 .cms-nav { padding: 20px 12px; overflow-y: auto; flex: 1; min-height: 0; }
 .cms-nav-group { margin-bottom: 24px; }
-.cms-nav-title { font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding: 0 12px; }
+.cms-nav-title { font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding: 0 12px; margin-top: 8px; }
+.cms-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--cms-text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.cms-item-card { background: rgba(30, 41, 59, 0.4); border: 1px solid var(--cms-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; transition: all 0.2s; position: relative; }
+.cms-item-card:hover { border-color: var(--cms-accent); background: rgba(30, 41, 59, 0.6); }
+
+/* Premium Item Card for CMS */
+.cms-item-card-premium {
+  background: var(--cms-surface);
+  border: 1px solid var(--cms-border);
+  border-radius: 14px;
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.cms-item-card-premium:hover {
+  border-color: var(--cms-border-focus);
+  background: #242f44;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+}
+
+.cms-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--cms-border);
+}
+
+.cms-item-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--cms-accent);
+  background: var(--cms-accent-glow);
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cms-icon-btn.danger {
+  color: var(--cms-text-muted);
+  border: 1px solid transparent;
+}
+
+.cms-icon-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
 .cms-nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--cms-text-muted); font-size: 0.85rem; font-weight: 500; transition: all 0.2s; margin-bottom: 2px; }
 .cms-nav-item:hover { background-color: var(--cms-surface); color: var(--cms-text); }
 .cms-nav-item.active { background-color: var(--cms-accent-glow); color: var(--cms-accent); box-shadow: inset 3px 0 0 var(--cms-accent); }
@@ -223,4 +276,56 @@
 /* Responsive */
 @media (max-width: 1200px) { .cms-inspector { width: 280px; } }
 @media (max-width: 1024px) { .cms-inspector { display: none; } .cms-canvas { padding: 24px; } }
-@media (max-width: 768px) { .cms-sidebar { position: absolute; transform: translateX(-100%); z-index: 50; } }
+@media (max-width: 768px) {
+  .cms-sidebar { 
+    position: fixed; 
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%); 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000; 
+  }
+  .cms-sidebar.open { transform: translateX(0); box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
+  .cms-layout { margin-top: 0; height: 100vh; }
+  .cms-topbar { padding: 0 12px; height: 60px; gap: 8px; }
+  .cms-canvas { padding: 20px 12px; }
+  .cms-page-title-input { font-size: 1.6rem; margin-bottom: 20px; }
+  .cms-breadcrumb { display: none; }
+  
+  .cms-topbar-actions { gap: 6px; }
+  .cms-topbar-actions .cms-btn-secondary span,
+  .cms-topbar-actions .cms-btn-outline span { display: none; }
+  .cms-topbar-actions .cms-btn-secondary,
+  .cms-topbar-actions .cms-btn-outline { padding: 8px; width: 38px; height: 38px; }
+
+  .cms-topbar-actions .cms-btn-primary span { display: none; }
+  .cms-topbar-actions .cms-btn-primary { padding: 8px; border-radius: 8px; width: 38px; height: 38px; }
+  .cms-hamburger { display: flex !important; margin-right: 8px; }
+}
+
+.cms-mobile-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 900; }
+.cms-hamburger { 
+  display: none; 
+  align-items: center; 
+  justify-content: center; 
+  width: 42px; 
+  height: 42px; 
+  color: var(--cms-accent); 
+  cursor: pointer; 
+  background: var(--cms-panel);
+  border: 1px solid var(--cms-border);
+  border-radius: 10px;
+  margin-right: 15px;
+}
+.cms-close-sidebar {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--cms-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cms-close-sidebar:hover { color: var(--cms-danger); }

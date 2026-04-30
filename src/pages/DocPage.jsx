@@ -49,17 +49,13 @@ export default function DocPage() {
     setLoading(true);
     setError(false);
     
-    const isPreview = new URLSearchParams(location.search).get('preview') === 'true';
-    
-    if (isPreview) {
-      const cmsData = localStorage.getItem('nexus-cms-' + id);
-      if (cmsData) {
-        const parsed = JSON.parse(cmsData);
-        setData(parsed);
-        setCurrentSections(parsed.sections || []);
-        setLoading(false);
-        return;
-      }
+    const cmsData = localStorage.getItem('nexus-cms-' + id);
+    if (cmsData) {
+      const parsed = JSON.parse(cmsData);
+      setData(parsed);
+      setCurrentSections(parsed.sections || []);
+      setLoading(false);
+      return;
     }
 
     fetch(`/pages/${id}.json`)
@@ -88,6 +84,7 @@ export default function DocPage() {
       });
       
     window.scrollTo(0, 0);
+    document.title = "Nexus Doc";
 
     return () => setCurrentSections([]);
   }, [id, setCurrentSections, location.search]);
@@ -113,7 +110,18 @@ export default function DocPage() {
         exit="exit"
       >
         <motion.header className="doc-header" variants={itemVariants}>
-          <h1>{data.icon && <IconRenderer iconName={data.icon} className="doc-title-icon" />} {data.title}</h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <div className="doc-meta">
+                <span className="doc-badge">{data.category || 'Documentation'}</span>
+                {data.status === 'draft' && <span className="doc-badge draft">Draft</span>}
+              </div>
+              <h1>
+                <span className="doc-title-icon"><IconRenderer iconName={id === 'getting-started' ? 'FiPlay' : id === 'installation' ? 'FiDownload' : 'FiFileText'} /></span>
+                {data.title}
+              </h1>
+            </div>
+          </div>
         </motion.header>
 
         <div className="doc-content">

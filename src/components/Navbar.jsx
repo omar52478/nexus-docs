@@ -63,41 +63,55 @@ export default function Navbar({ toggleMobile }) {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    document.title = "Nexus Doc";
+  }, []);
+
   const toggleTheme = () => {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   return (
     <>
-      <nav className="navbar glass">
+      <nav className="doc-navbar glass">
         <div className="nav-brand">
-          <button className="mobile-toggle" onClick={toggleMobile} aria-label="Toggle Menu">
-            <FaBars size={20} />
-          </button>
           <Link to="/" className="logo-container">
-            <div className="logo-glow"></div>
-            <FaCube className="nav-logo-icon" size={isMobile ? 20 : 24} />
+            <img src="/assets/images/logo.png" className="nav-logo-img" alt="Logo" />
             <div className="nav-title">
-              <span className="nexus-text">{isMobile ? 'NEXUS' : 'NEXUS'}</span>
-              {!isMobile && <span className="nav-badge">DOCS</span>}
+              <span className="nexus-text">NEXUS</span>
+              <span className="nav-badge">DOCS</span>
             </div>
           </Link>
         </div>
 
-        <div className="nav-search" onClick={() => setIsSearchOpen(true)}>
-          <div className="search-wrapper glass trigger">
-            <FaMagnifyingGlass className="search-icon" size={16} />
-            <span className="search-placeholder-text">
-              {isMobile ? "Search..." : "Quick search documentation..."}
-            </span>
-            {!isMobile && <kbd className="search-kbd">Ctrl K</kbd>}
+        {/* Desktop Search */}
+        {!isMobile && (
+          <div className="nav-search" onClick={() => setIsSearchOpen(true)}>
+            <div className="search-wrapper glass trigger">
+              <FaMagnifyingGlass className="search-icon" size={16} />
+              <span className="search-placeholder-text">Quick search documentation...</span>
+              <kbd className="search-kbd">Ctrl K</kbd>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="nav-actions">
+          {/* Mobile Search Icon */}
+          {isMobile && (
+            <button className="mobile-action-btn search-trigger" onClick={() => setIsSearchOpen(true)}>
+              <FaMagnifyingGlass size={16} />
+            </button>
+          )}
+
           <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle theme">
             {theme === 'dark' ? <FaSun size={18} /> : <FaMoon size={18} />}
           </button>
+
+          {isMobile && (
+            <button className="mobile-toggle-top" onClick={toggleMobile}>
+              <FaBars size={20} />
+            </button>
+          )}
         </div>
       </nav>
 

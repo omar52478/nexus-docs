@@ -172,15 +172,25 @@ export default function SearchPalette({ isOpen, onClose, fullContent }) {
                 <div className="palette-placeholder">
                   <div className="placeholder-grid">
                     <div className="placeholder-group">
-                      <h4>Popular</h4>
-                      <button onClick={() => setQuery('getting started')}>Getting Started</button>
-                      <button onClick={() => setQuery('vision system')}>Vision System</button>
-                      <button onClick={() => setQuery('api')}>API Reference</button>
+                      <h4><FaBook className="group-icon" /> Popular</h4>
+                      <button className="palette-btn" onClick={() => setQuery('getting started')}>
+                        <FaBook className="btn-icon" /> Getting Started
+                      </button>
+                      <button className="palette-btn" onClick={() => setQuery('vision system')}>
+                        <FaMicrochip className="btn-icon" /> Vision System
+                      </button>
+                      <button className="palette-btn" onClick={() => setQuery('api')}>
+                        <FaCode className="btn-icon" /> API Reference
+                      </button>
                     </div>
                     <div className="placeholder-group">
-                      <h4>Resources</h4>
-                      <button onClick={() => window.open('https://github.com', '_blank')}>GitHub Repository</button>
-                      <button onClick={() => window.open('https://discord.com', '_blank')}>Community Discord</button>
+                      <h4><FaXmark className="group-icon" style={{transform: 'rotate(45deg)'}} /> Resources</h4>
+                      <button className="palette-btn" onClick={() => window.open('https://github.com', '_blank')}>
+                        <FiIcons.FiGithub className="btn-icon" /> GitHub Repository
+                      </button>
+                      <button className="palette-btn" onClick={() => window.open('https://discord.com', '_blank')}>
+                        <FiIcons.FiMessageSquare className="btn-icon" /> Community Discord
+                      </button>
                     </div>
                   </div>
                 </div>

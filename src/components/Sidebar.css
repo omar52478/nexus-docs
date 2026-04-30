@@ -1,14 +1,21 @@
 .sidebar {
   width: var(--sidebar-width);
-  height: calc(100vh - var(--nav-height));
+  height: 100vh;
   position: fixed;
-  top: var(--nav-height);
+  top: 0;
   left: 0;
   overflow-y: auto;
+  background-color: var(--bg-primary);
   border-right: 1px solid var(--border-strong);
   padding: 2rem 1.5rem;
   z-index: 50;
   transition: transform 0.3s ease;
+}
+
+/* Vibrant Light Mode Flourish */
+[data-theme='light'] .sidebar {
+  background: linear-gradient(180deg, #ffffff 0%, #f9faff 100%);
+  box-shadow: 10px 0 50px rgba(99, 102, 241, 0.03);
 }
 
 .sidebar-group {
@@ -128,9 +135,82 @@
   padding-left: 0.2rem;
 }
 
+/* Sidebar Footer & Download Button */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1.5rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.sidebar-download-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(56, 189, 248, 0.1));
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+
+.sidebar-download-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6, #38bdf8);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px rgba(139, 92, 246, 0.4);
+}
+
+.btn-icon-wrap {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b5cf6;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+}
+
+.sidebar-download-btn:hover .btn-icon-wrap {
+  background: #fff;
+  color: #000;
+}
+
+.btn-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  transition: all 0.3s;
+}
+
+.btn-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: all 0.3s;
+}
+
+.sidebar-download-btn:hover .btn-label,
+.sidebar-download-btn:hover .btn-title {
+  color: #fff;
+}
+
 @media (max-width: 1024px) {
   .sidebar {
     left: -100%;
+    transform: none;
   }
   .sidebar.open {
     left: 0;
@@ -140,6 +220,7 @@
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    left: 0;
   }
   .sidebar.open {
     transform: translateX(0);
