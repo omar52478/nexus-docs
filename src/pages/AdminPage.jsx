@@ -366,8 +366,15 @@ export default function AdminPage() {
           return { ...s, type: computedType, id: s.id || `init-${i}-${Date.now()}` };
         })
       }));
+      
+      // Sort pages to ensure 'landing' is always at the top or handled specially
       setPages(validPages);
-      if (validPages.length > 0) handleSelectPage(validPages[0]);
+      
+      if (validPages.length > 0) {
+        const landingPage = validPages.find(p => p.id === 'landing');
+        if (landingPage) handleSelectPage(landingPage);
+        else handleSelectPage(validPages[0]);
+      }
     });
   }, []);
 
@@ -520,10 +527,20 @@ export default function AdminPage() {
           </button>
         </div>
         <div className="cms-nav">
-          {CATEGORIES.map(cat => (
+          {/* Featured/Landing Section */}
+          <div className="cms-nav-group">
+            <div className="cms-nav-title">Main Site</div>
+            {pages.filter(p => p.id === 'landing').map(p => (
+              <div key={p.id} className={`cms-nav-item featured ${selectedPage === p.id ? 'active' : ''}`} onClick={() => { handleSelectPage(p); setIsSidebarOpen(false); }}>
+                <FiIcons.FiLayout size={16} /> Landing Page
+              </div>
+            ))}
+          </div>
+
+          {CATEGORIES.filter(c => c.name !== 'Configuration' || pages.some(p => p.id !== 'landing' && p.category === 'Configuration')).map(cat => (
             <div key={cat.name} className="cms-nav-group">
               <div className="cms-nav-title">{cat.name}</div>
-              {pages.filter(p => (p.category || 'Basics') === cat.name).map(p => (
+              {pages.filter(p => p.id !== 'landing' && (p.category || 'Basics') === cat.name).map(p => (
                 <div key={p.id} className={`cms-nav-item ${selectedPage === p.id ? 'active' : ''}`} onClick={() => { handleSelectPage(p); setIsSidebarOpen(false); }}>
                   <IconRenderer iconName={p.icon} size={16} /> {p.title}
                 </div>
@@ -547,6 +564,7 @@ export default function AdminPage() {
           </div>
           <div className="cms-topbar-actions">
             {hasChanges && <span style={{ fontSize: 12, color: '#38bdf8', fontWeight: 600, paddingRight: 10 }} className="d-none d-md-inline">● Unsaved Changes</span>}
+            <button className="cms-btn cms-btn-danger d-none d-md-flex" onClick={handleReset} title="Discard local changes and reload from file"><FiIcons.FiRotateCcw /> Reset</button>
             <button className="cms-btn cms-btn-secondary" onClick={() => window.open('/', '_blank')}><FiIcons.FiHome /> <span className="d-none d-md-inline">View Home</span></button>
             <button className="cms-btn cms-btn-secondary" onClick={handlePreview}><FiIcons.FiExternalLink /> <span className="d-none d-md-inline">Preview</span></button>
             <button className="cms-btn cms-btn-primary" onClick={handleSave} disabled={!hasChanges} style={{ opacity: hasChanges ? 1 : 0.5 }}><FiIcons.FiSave /> <span className="d-none d-md-inline">Publish</span></button>
@@ -564,6 +582,44 @@ export default function AdminPage() {
                   onChange={e => { setFormData({ ...formData, title: e.target.value }); setHasChanges(true); }}
                   placeholder="Document Title"
                 />
+
+                {/* Navbar Manager for Landing Page */}
+                {selectedPage === 'landing' && formData.navbar && (
+                  <div className={`cms-block-card active mb-5`} style={{ borderLeft: '4px solid #38bdf8' }}>
+                    <div className="cms-block-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                         <FiIcons.FiLink size={16} color="#38bdf8" />
+                         <span className="cms-block-type" style={{ color: '#38bdf8' }}>NAVBAR MANAGER</span>
+                      </div>
+                    </div>
+                    <div className="cms-block-body">
+                      <div className="cms-grid-2">
+                        {formData.navbar.map((nav, nidx) => (
+                          <div key={nidx} className="p-3 mb-2" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div className="cms-form-group mb-2">
+                              <label style={{ fontSize: '0.7rem' }}>Label</label>
+                              <input className="cms-input" value={nav.label} onChange={e => {
+                                const newNav = [...formData.navbar];
+                                newNav[nidx].label = e.target.value;
+                                setFormData({ ...formData, navbar: newNav });
+                                setHasChanges(true);
+                              }} />
+                            </div>
+                            <div className="cms-form-group">
+                              <label style={{ fontSize: '0.7rem' }}>Link / Anchor</label>
+                              <input className="cms-input" value={nav.href} onChange={e => {
+                                const newNav = [...formData.navbar];
+                                newNav[nidx].href = e.target.value;
+                                setFormData({ ...formData, navbar: newNav });
+                                setHasChanges(true);
+                              }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <Reorder.Group axis="y" values={formData.sections} onReorder={(vals) => { setFormData({ ...formData, sections: vals }); setHasChanges(true); }} className="cms-block-list">
                   <AnimatePresence>
@@ -596,10 +652,95 @@ export default function AdminPage() {
                               className="cms-input cms-h2"
                               value={block.heading || ''}
                               onChange={e => updateBlock(idx, 'heading', e.target.value)}
-                              placeholder="Section Heading (Optional)"
+                              placeholder={block.type === 'hero-premium' ? 'Hero Headline' : 'Section Heading (Optional)'}
                             />
 
-                            {['text', 'list', 'steps'].includes(block.type) && (
+                            {/* --- Custom Landing Page Section Editors --- */}
+                            
+                            {block.type === 'hero-premium' && (
+                              <div className="cms-hero-editor mt-3">
+                                <div className="cms-form-group">
+                                  <label>Badge Text</label>
+                                  <input className="cms-input" value={block.badge || ''} onChange={e => updateBlock(idx, 'badge', e.target.value)} placeholder="e.g. V2.2 Stable Release" />
+                                </div>
+                                <div className="cms-form-group">
+                                  <label>Hero Video Path</label>
+                                  <input className="cms-input" value={block.heroVideo || ''} onChange={e => updateBlock(idx, 'heroVideo', e.target.value)} placeholder="/assets/media/video.mp4" />
+                                </div>
+                                <div className="cms-grid-2">
+                                  <div className="cms-form-group">
+                                    <label>Primary Button</label>
+                                    <input className="cms-input" value={block.primaryBtn || ''} onChange={e => updateBlock(idx, 'primaryBtn', e.target.value)} />
+                                  </div>
+                                  <div className="cms-form-group">
+                                    <label>Secondary Button</label>
+                                    <input className="cms-input" value={block.secondaryBtn || ''} onChange={e => updateBlock(idx, 'secondaryBtn', e.target.value)} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {block.type === 'features-6-grid' && (
+                              <div className="cms-features-editor mt-3">
+                                <div className="cms-grid-2">
+                                  {(block.items || []).map((f, fidx) => (
+                                    <div key={fidx} className="cms-feature-card p-3 mb-2" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                      <input className="cms-input mb-2" style={{ fontWeight: 700 }} value={f.title} onChange={e => {
+                                        const newItems = [...block.items];
+                                        newItems[fidx].title = e.target.value;
+                                        updateBlock(idx, 'items', newItems);
+                                      }} />
+                                      <textarea className="cms-input" rows={2} value={f.desc} onChange={e => {
+                                        const newItems = [...block.items];
+                                        newItems[fidx].desc = e.target.value;
+                                        updateBlock(idx, 'items', newItems);
+                                      }} />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {(block.type === 'split-horizontal' || block.type === 'split-grid-bottom') && block.block && (
+                              <div className="cms-split-editor mt-3">
+                                <div className="cms-form-group">
+                                  <label>Section Title</label>
+                                  <input className="cms-input" value={block.block.title} onChange={e => updateBlock(idx, 'block', { ...block.block, title: e.target.value })} />
+                                </div>
+                                <div className="cms-form-group">
+                                  <label>Description</label>
+                                  <textarea className="cms-input" value={block.block.desc} onChange={e => updateBlock(idx, 'block', { ...block.block, desc: e.target.value })} />
+                                </div>
+                                <div className="cms-form-group">
+                                  <label>Image Path</label>
+                                  <input className="cms-input" value={block.block.image} onChange={e => updateBlock(idx, 'block', { ...block.block, image: e.target.value })} />
+                                </div>
+                              </div>
+                            )}
+
+                            {block.type === 'split-vertical-video' && block.blocks && (
+                              <div className="cms-video-split-editor mt-3">
+                                {block.blocks.map((b, bidx) => (
+                                  <div key={bidx} className="p-3 mb-3" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                                    <h6>Block {bidx + 1}</h6>
+                                    <input className="cms-input mb-2" value={b.title} onChange={e => {
+                                      const newB = [...block.blocks];
+                                      newB[bidx].title = e.target.value;
+                                      updateBlock(idx, 'blocks', newB);
+                                    }} />
+                                    <input className="cms-input mb-2" value={b.videoSrc || b.image} onChange={e => {
+                                      const newB = [...block.blocks];
+                                      if (b.videoSrc) newB[bidx].videoSrc = e.target.value;
+                                      else newB[bidx].image = e.target.value;
+                                      updateBlock(idx, 'blocks', newB);
+                                    }} placeholder="Media Path" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* --- Original Block Content --- */}
+                            {['text', 'steps', 'list'].includes(block.type) && (
                               <div style={{ marginBottom: 12 }}>
                                 {block.type !== 'text' && <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--cms-text-muted)', marginBottom: 6, fontWeight: 600 }}>Introduction Paragraph (Optional)</label>}
                                 <AutoSizeTextarea

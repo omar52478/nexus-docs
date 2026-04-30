@@ -59,6 +59,10 @@
   border: 1px solid var(--border-light);
   border-radius: 16px;
   transition: all 0.3s ease;
+  /* Prevent overflow from long URLs or text */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 [data-theme='light'] .doc-list li {
@@ -124,6 +128,10 @@
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* Prevent overflow from long technical strings */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 .doc-steps li:hover {

@@ -17,6 +17,9 @@ export default function Sidebar({ isOpen, closeMobile }) {
 
   return (
     <aside className={`sidebar glass ${isOpen ? 'open' : ''}`}>
+      <button className="sidebar-close-btn" onClick={closeMobile} title="Close Menu">
+        <FiIcons.FiX size={20} />
+      </button>
       <div className="sidebar-content">
         <div className="sidebar-group" style={{ marginBottom: '24px' }}>
           <button 
@@ -44,58 +47,63 @@ export default function Sidebar({ isOpen, closeMobile }) {
           </NavLink>
         </div>
 
-        {CATEGORIES.map((cat, idx) => (
-          <div key={idx} className="sidebar-group">
-            <h4 className="sidebar-group-label">
-              <IconRenderer iconName={cat.icon} className="group-icon" />
-              <span>{cat.name}</span>
-            </h4>
-            <div className="sidebar-links">
-              {cat.links.map(page => {
-                const isActive = location.pathname === `/docs/${page.id}`;
-                return (
-                  <div key={page.id} className="sidebar-link-wrapper">
-                    <NavLink 
-                      to={`/docs/${page.id}`}
-                      onClick={closeMobile}
-                      className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                    >
-                      <span className="page-icon">{page.icon}</span>
-                      <span>{page.title}</span>
-                      <FaChevronRight size={12} className={`link-arrow ${isActive ? 'rotated' : ''}`} />
-                    </NavLink>
-                    
-                    {isActive && isMobile && currentSections.length > 0 && (
-                      <div className="sidebar-sublinks">
-                        {currentSections.map((section, sidx) => {
-                          if (!section.heading) return null;
-                          const sid = section.heading.toLowerCase().replace(/\s+/g, '-');
-                          return (
-                            <a 
-                              key={sidx}
-                              href={`#${sid}`}
-                              className="sidebar-sublink"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                const el = document.getElementById(sid);
-                                if (el) {
-                                  el.scrollIntoView({ behavior: 'smooth' });
-                                  closeMobile();
-                                }
-                              }}
-                            >
-                              {section.heading}
-                            </a>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+        {CATEGORIES.map((cat, idx) => {
+          const filteredLinks = cat.links.filter(page => page.id !== 'landing');
+          if (filteredLinks.length === 0) return null;
+
+          return (
+            <div key={idx} className="sidebar-group">
+              <h4 className="sidebar-group-label">
+                <IconRenderer iconName={cat.icon} className="group-icon" />
+                <span>{cat.name}</span>
+              </h4>
+              <div className="sidebar-links">
+                {filteredLinks.map(page => {
+                  const isActive = location.pathname === `/docs/${page.id}`;
+                  return (
+                    <div key={page.id} className="sidebar-link-wrapper">
+                      <NavLink 
+                        to={`/docs/${page.id}`}
+                        onClick={closeMobile}
+                        className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                      >
+                        <span className="page-icon">{page.icon}</span>
+                        <span>{page.title}</span>
+                        <FaChevronRight size={12} className={`link-arrow ${isActive ? 'rotated' : ''}`} />
+                      </NavLink>
+                      
+                      {isActive && isMobile && currentSections.length > 0 && (
+                        <div className="sidebar-sublinks">
+                          {currentSections.map((section, sidx) => {
+                            if (!section.heading) return null;
+                            const sid = section.heading.toLowerCase().replace(/\s+/g, '-');
+                            return (
+                              <a 
+                                key={sidx}
+                                href={`#${sid}`}
+                                className="sidebar-sublink"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  const el = document.getElementById(sid);
+                                  if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth' });
+                                    closeMobile();
+                                  }
+                                }}
+                              >
+                                {section.heading}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </aside>
   );
