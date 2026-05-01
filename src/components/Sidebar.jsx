@@ -24,7 +24,7 @@ export default function Sidebar({ isOpen, closeMobile }) {
         <div className="sidebar-group" style={{ marginBottom: '24px' }}>
           <button 
             className="sidebar-download-btn" 
-            onClick={() => window.open('https://drive.google.com/file/d/19ZGXVUwLJnPlwk9FzTxDWMnc78GTN-6J/view', '_blank')}
+            onClick={() => window.open('https://drive.google.com/file/d/1l8dl3KJtxv0mDZkKILKpa6b9pkEYJEV7/view?usp=sharing', '_blank')}
             style={{ 
               width: '100%', 
               background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(129, 140, 248, 0.15) 100%)',

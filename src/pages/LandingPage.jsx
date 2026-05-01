@@ -664,7 +664,7 @@ export default function LandingPage() {
                                 </button>
                             </div>
                             <div className="header__button d-none d-lg-flex gap-3 align-items-center">
-                                <a className="thm-btn thm-btn--outline style-2 d-flex align-items-center gap-2" href="https://drive.google.com/file/d/19ZGXVUwLJnPlwk9FzTxDWMnc78GTN-6J/view" target="_blank" rel="noreferrer" style={{ padding: '10px 20px', fontSize: '0.85rem' }}><FaDownload size={14} /> Download</a>
+                                <a className="thm-btn thm-btn--outline style-2 d-flex align-items-center gap-2" href="https://drive.google.com/file/d/1l8dl3KJtxv0mDZkKILKpa6b9pkEYJEV7/view?usp=sharing" target="_blank" rel="noreferrer" style={{ padding: '10px 20px', fontSize: '0.85rem' }}><FaDownload size={14} /> Download</a>
                                 <Link className="thm-btn thm-btn--gradient style-2" to="/docs/getting-started" target="_blank" rel="noreferrer" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>Documentation</Link>
                             </div>
                         </div>
