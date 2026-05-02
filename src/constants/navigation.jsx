@@ -95,10 +95,6 @@ export const CATEGORIES = [
     "icon": "FiSettings",
     "links": [
       {
-        "id": "landing",
-        "title": "Nexus Guardian | Advanced Edge AI Vision Ecosystem"
-      },
-      {
         "id": "settings",
         "title": "Settings"
       }
@@ -192,8 +188,8 @@ export const ALL_PAGES = [
   },
   {
     "id": "landing",
-    "title": "Nexus Guardian | Advanced Edge AI Vision Ecosystem",
-    "category": "Configuration"
+    "title": "NEXUS Vision | Edge AI Vision & Autonomous Targeting Platform",
+    "category": "Overview"
   },
   {
     "id": "laser-alignment",

@@ -20,6 +20,8 @@ export default function LandingPage() {
     const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(true);
     const [preloaderDone, setPreloaderDone] = useState(false);
+    const [introPlayed, setIntroPlayed] = useState(false);
+    const [showIntro, setShowIntro] = useState(true);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -31,7 +33,7 @@ export default function LandingPage() {
             else setShowScrollTop(false);
 
             // ScrollSpy Logic - Viewport relative approach
-            const sections = ['home', 'feature', 'process'];
+            const sections = ['home', 'feature', 'process', 'team'];
             let currentSection = 'home';
 
             for (const section of sections) {
@@ -48,7 +50,7 @@ export default function LandingPage() {
             // Guarantee the last section is highlighted if we hit the absolute bottom of the page
             // Using Math.ceil to account for fractional scroll values on high-DPI displays
             if (Math.ceil(window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 50) {
-                currentSection = 'process';
+                currentSection = 'team';
             }
 
             setActiveSection(currentSection);
@@ -558,6 +560,296 @@ export default function LandingPage() {
         );
     }
 
+    /* ===== PLAYER INTRO OVERLAY (Enhanced) ===== */
+    if (preloaderDone && showIntro && !introPlayed) {
+        const founders = data?.founders || [
+            { name: 'Omar Kareem', role: 'Co-Founder & Hardware Systems Lead', image: '/assets/images/team/founder-2.png' },
+            { name: 'Ahmed Metwally', role: 'Co-Founder & Software Systems Lead', image: '/assets/images/team/founder-1.png' }
+        ];
+        return (
+            <motion.div
+                key="player-intro"
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 99999,
+                    background: '#000',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'hidden', fontFamily: 'Inter, sans-serif',
+                }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                transition={{ duration: 1 }}
+            >
+                {/* Vignette overlay */}
+                <div style={{
+                    position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20,
+                    background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%)',
+                }} />
+                {/* Animated grid background */}
+                <div style={{
+                    position: 'absolute', inset: 0, opacity: 0.03,
+                    backgroundImage: `
+                        linear-gradient(rgba(56,189,248,0.4) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(56,189,248,0.4) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '60px 60px',
+                    pointerEvents: 'none',
+                }} />
+
+                {/* Scan lines overlay */}
+                <div style={{
+                    position: 'absolute', inset: 0, opacity: 0.04,
+                    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(56,189,248,0.5) 2px, transparent 4px)',
+                    pointerEvents: 'none',
+                }} />
+
+                {/* Horizontal laser sweep */}
+                <motion.div
+                    style={{
+                        position: 'absolute', left: 0, right: 0, height: 2,
+                        background: 'linear-gradient(90deg, transparent 0%, #38bdf8 30%, #818cf8 70%, transparent 100%)',
+                        boxShadow: '0 0 20px 4px rgba(56,189,248,0.4), 0 0 60px 8px rgba(56,189,248,0.15)',
+                        zIndex: 10,
+                    }}
+                    initial={{ top: '-5%' }}
+                    animate={{ top: '105%' }}
+                    transition={{ duration: 2.5, delay: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                />
+
+                {/* Central dual-color glow */}
+                <motion.div
+                    style={{
+                        position: 'absolute', width: 800, height: 800,
+                        background: 'radial-gradient(circle, rgba(56,189,248,0.1) 0%, rgba(129,140,248,0.05) 40%, transparent 70%)',
+                        borderRadius: '50%',
+                    }}
+                    animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+
+                {/* Spotlight beams */}
+                {[0, 1].map(idx => (
+                    <motion.div
+                        key={`spot-${idx}`}
+                        style={{
+                            position: 'absolute', bottom: 0,
+                            left: idx === 0 ? '20%' : '60%',
+                            width: 'clamp(100px, 15vw, 200px)', height: '120%',
+                            background: idx === 0
+                                ? 'linear-gradient(0deg, rgba(56,189,248,0.08) 0%, transparent 60%)'
+                                : 'linear-gradient(0deg, rgba(129,140,248,0.08) 0%, transparent 60%)',
+                            clipPath: 'polygon(30% 100%, 70% 100%, 100% 0%, 0% 0%)',
+                            filter: 'blur(20px)',
+                        }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.8 + idx * 0.3, duration: 1 }}
+                    />
+                ))}
+
+                {/* Top badge */}
+                <motion.div
+                    style={{
+                        position: 'absolute', top: 'clamp(20px, 6%, 60px)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                    }}
+                    initial={{ opacity: 0, y: -40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.7, type: 'spring' }}
+                >
+                    <motion.img
+                        src="/assets/images/logo.png" alt="NEXUS"
+                        style={{ height: 36, filter: 'drop-shadow(0 0 15px rgba(56,189,248,0.6))' }}
+                        animate={{ opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                    />
+                    <div style={{
+                        fontSize: 'clamp(0.6rem, 1.2vw, 0.75rem)', fontWeight: 800, letterSpacing: 8, color: '#38bdf8',
+                        textTransform: 'uppercase', fontFamily: 'monospace',
+                    }}>NEXUS VISION</div>
+                    <div style={{
+                        width: 120, height: 1,
+                        background: 'linear-gradient(90deg, transparent, rgba(56,189,248,0.5), transparent)',
+                    }} />
+                    <div style={{
+                        fontSize: '0.6rem', letterSpacing: 5, color: '#334155',
+                        textTransform: 'uppercase',
+                    }}>CORE ENGINEERS</div>
+                </motion.div>
+
+                {/* Founders container */}
+                <div style={{
+                    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                    gap: window.innerWidth <= 768 ? '10px' : 'clamp(15px, 4vw, 60px)',
+                    position: 'relative', zIndex: 2,
+                    marginTop: window.innerWidth <= 768 ? '12vh' : '4vh',
+                    flexDirection: window.innerWidth <= 768 ? 'row' : 'row',
+                    padding: window.innerWidth <= 768 ? '0 10px' : 0,
+                }}>
+                    {founders.map((f, idx) => (
+                        <motion.div
+                            key={idx}
+                            style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                position: 'relative',
+                            }}
+                            initial={{ opacity: 0, x: idx === 0 ? (window.innerWidth <= 768 ? -120 : -250) : (window.innerWidth <= 768 ? 120 : 250), scale: 0.7, rotateY: idx === 0 ? 15 : -15 }}
+                            animate={{ opacity: 1, x: 0, scale: 1, rotateY: 0 }}
+                            transition={{
+                                delay: 0.4 + idx * 0.3,
+                                duration: 1,
+                                type: 'spring', stiffness: 60, damping: 16,
+                            }}
+                        >
+                            {/* Multi-layer glow */}
+                            <motion.div
+                                style={{
+                                    position: 'absolute', bottom: 40,
+                                    width: 'clamp(200px, 35vw, 350px)', height: 'clamp(200px, 35vw, 350px)',
+                                    background: idx === 0
+                                        ? 'radial-gradient(circle, rgba(56,189,248,0.2) 0%, rgba(56,189,248,0.05) 50%, transparent 70%)'
+                                        : 'radial-gradient(circle, rgba(129,140,248,0.2) 0%, rgba(129,140,248,0.05) 50%, transparent 70%)',
+                                    borderRadius: '50%', filter: 'blur(50px)',
+                                }}
+                                animate={{ scale: [1, 1.25, 1], opacity: [0.4, 0.8, 0.4] }}
+                                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: idx * 0.6 }}
+                            />
+                            {/* Inner bright glow */}
+                            <motion.div
+                                style={{
+                                    position: 'absolute', bottom: 80,
+                                    width: 'clamp(80px, 12vw, 150px)', height: 'clamp(80px, 12vw, 150px)',
+                                    background: idx === 0
+                                        ? 'radial-gradient(circle, rgba(56,189,248,0.35) 0%, transparent 70%)'
+                                        : 'radial-gradient(circle, rgba(129,140,248,0.35) 0%, transparent 70%)',
+                                    borderRadius: '50%', filter: 'blur(25px)',
+                                }}
+                                animate={{ scale: [0.8, 1.1, 0.8] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: idx * 0.4 }}
+                            />
+
+                            {/* Person image */}
+                            <motion.img
+                                src={f.image}
+                                alt={f.name}
+                                style={{
+                                    height: window.innerWidth <= 768 ? 'clamp(180px, 35vh, 280px)' : 'clamp(270px, 48vh, 480px)',
+                                    width: 'auto', maxWidth: window.innerWidth <= 768 ? '45vw' : 'auto',
+                                    objectFit: 'contain', position: 'relative', zIndex: 2,
+                                    filter: `drop-shadow(0 0 50px ${idx === 0 ? 'rgba(56,189,248,0.25)' : 'rgba(129,140,248,0.25)'}) drop-shadow(0 20px 40px rgba(0,0,0,0.6))`,
+                                }}
+                                animate={{ y: [0, -10, 0] }}
+                                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: idx * 0.4 }}
+                            />
+
+                            {/* Name plate with glassmorphism */}
+                            <motion.div
+                                style={{
+                                    marginTop: window.innerWidth <= 768 ? 8 : 16, textAlign: 'center', position: 'relative', zIndex: 3,
+                                    background: 'rgba(2,6,23,0.6)', backdropFilter: 'blur(16px)',
+                                    padding: window.innerWidth <= 768 ? '8px 12px' : '12px 24px',
+                                    borderRadius: window.innerWidth <= 768 ? 10 : 14,
+                                    border: `1px solid ${idx === 0 ? 'rgba(56,189,248,0.25)' : 'rgba(129,140,248,0.25)'}`,
+                                    boxShadow: `0 8px 32px ${idx === 0 ? 'rgba(56,189,248,0.1)' : 'rgba(129,140,248,0.1)'}`,
+                                }}
+                                initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ delay: 1.2 + idx * 0.25, duration: 0.6, type: 'spring' }}
+                            >
+                                <div style={{
+                                    fontSize: window.innerWidth <= 768 ? 'clamp(0.75rem, 3.5vw, 1rem)' : 'clamp(1.1rem, 2.5vw, 1.8rem)',
+                                    fontWeight: 900,
+                                    color: '#f8fafc', letterSpacing: window.innerWidth <= 768 ? 1 : 2,
+                                    textTransform: 'uppercase',
+                                    textShadow: `0 0 25px ${idx === 0 ? 'rgba(56,189,248,0.4)' : 'rgba(129,140,248,0.4)'}`,
+                                }}>{f.name}</div>
+                                <motion.div
+                                    style={{
+                                        width: 30, height: 2, margin: '6px auto',
+                                        background: idx === 0 ? '#38bdf8' : '#818cf8', borderRadius: 2,
+                                    }}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: 30 }}
+                                    transition={{ delay: 1.6 + idx * 0.2, duration: 0.4 }}
+                                />
+                                <div style={{
+                                    fontSize: 'clamp(0.55rem, 1vw, 0.7rem)', fontWeight: 700,
+                                    color: idx === 0 ? '#38bdf8' : '#818cf8',
+                                    letterSpacing: 2, textTransform: 'uppercase',
+                                }}>{f.role}</div>
+                            </motion.div>
+                        </motion.div>
+                    ))}
+
+                    {/* Center divider - hidden on very small screens */}
+                    {window.innerWidth > 480 && (
+                        <motion.div
+                            style={{
+                                position: 'absolute', top: '35%', left: '50%', transform: 'translateX(-50%)',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 5,
+                            }}
+                            initial={{ opacity: 0, scale: 0 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 1.5, duration: 0.5, type: 'spring' }}
+                        >
+                            <div style={{
+                                width: 1, height: 40,
+                                background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.15), transparent)',
+                            }} />
+                            <div style={{
+                                width: 36, height: 36, borderRadius: '50%',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'rgba(2,6,23,0.8)', backdropFilter: 'blur(10px)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.6rem', fontWeight: 900, color: '#475569', letterSpacing: 1,
+                            }}>×</div>
+                            <div style={{
+                                width: 1, height: 40,
+                                background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.15), transparent)',
+                            }} />
+                        </motion.div>
+                    )}
+                </div>
+
+                {/* Bottom progress + skip */}
+                <motion.div
+                    style={{
+                        position: 'absolute', bottom: 'clamp(20px, 5%, 50px)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1.8 }}
+                >
+                    <div style={{ width: 220, height: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                        <motion.div
+                            style={{ height: '100%', background: 'linear-gradient(90deg, #38bdf8, #818cf8, #c084fc)', borderRadius: 4 }}
+                            initial={{ width: '0%' }}
+                            animate={{ width: '100%' }}
+                            transition={{ delay: 1.8, duration: 5, ease: 'linear' }}
+                            onAnimationComplete={() => {
+                                setShowIntro(false);
+                                setIntroPlayed(true);
+                            }}
+                        />
+                    </div>
+                    <button
+                        onClick={() => { setShowIntro(false); setIntroPlayed(true); }}
+                        style={{
+                            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                            color: '#475569', padding: '8px 28px', borderRadius: 20,
+                            cursor: 'pointer', fontSize: '0.65rem', letterSpacing: 3,
+                            textTransform: 'uppercase', transition: 'all 0.3s',
+                            backdropFilter: 'blur(8px)',
+                        }}
+                        onMouseEnter={e => { e.target.style.borderColor = '#38bdf8'; e.target.style.color = '#38bdf8'; e.target.style.background = 'rgba(56,189,248,0.05)'; }}
+                        onMouseLeave={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.color = '#475569'; e.target.style.background = 'rgba(255,255,255,0.03)'; }}
+                    >
+                        Skip Intro
+                    </button>
+                </motion.div>
+            </motion.div>
+        );
+    }
+
     if (loading || !data) return null;
 
     const hero = data.sections.find(s => s.type === 'hero-premium');
@@ -647,9 +939,9 @@ export default function LandingPage() {
                                 <nav className="main-menu collapse navbar-collapse">
                                     <ul>
                                         {data?.navbar?.filter(link => link.type !== 'link').map((link, idx) => (
-                                          <li key={idx} className={activeSection === link.href.replace('#', '') ? 'active' : ''}>
-                                            <a href={link.href} onClick={(e) => handleSmoothScroll(e, link.href.replace('#', ''))}>{link.label}</a>
-                                          </li>
+                                            <li key={idx} className={activeSection === link.href.replace('#', '') ? 'active' : ''}>
+                                                <a href={link.href} onClick={(e) => handleSmoothScroll(e, link.href.replace('#', ''))}>{link.label}</a>
+                                            </li>
                                         ))}
                                     </ul>
                                 </nav>
@@ -705,13 +997,13 @@ export default function LandingPage() {
                         <button className="close-menu" onClick={() => setIsMenuOpen(false)} style={{ fontSize: '2.5rem' }}>&times;</button>
                         <ul className="mobile-menu-links">
                             {data?.navbar?.map((link, idx) => (
-                              <li key={idx}>
-                                {link.type === 'link' ? (
-                                  <Link to={link.href} onClick={() => setIsMenuOpen(false)}>{link.label}</Link>
-                                ) : (
-                                  <a href={link.href} onClick={(e) => handleSmoothScroll(e, link.href.replace('#', ''))}>{link.label}</a>
-                                )}
-                              </li>
+                                <li key={idx}>
+                                    {link.type === 'link' ? (
+                                        <Link to={link.href} onClick={() => setIsMenuOpen(false)}>{link.label}</Link>
+                                    ) : (
+                                        <a href={link.href} onClick={(e) => handleSmoothScroll(e, link.href.replace('#', ''))}>{link.label}</a>
+                                    )}
+                                </li>
                             ))}
                         </ul>
                     </motion.div>
@@ -936,6 +1228,119 @@ export default function LandingPage() {
                                 </div>
                             </motion.div>
                         )}
+                    </div>
+                </section>
+
+                {/* ===== FOUNDERS / ARCHITECTS SECTION ===== */}
+                <section id="team" style={{
+                    padding: 'clamp(60px, 10vw, 120px) 0',
+                    position: 'relative', overflow: 'hidden',
+                    background: 'linear-gradient(180deg, transparent 0%, rgba(56,189,248,0.03) 50%, transparent 100%)',
+                }}>
+                    {/* Decorative line */}
+                    <div style={{
+                        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                        width: 1, height: 80,
+                        background: 'linear-gradient(180deg, transparent, rgba(56,189,248,0.3), transparent)',
+                    }} />
+
+                    <div className="container">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.3 }}
+                            transition={{ duration: 0.7 }}
+                            style={{ textAlign: 'center', marginBottom: 'clamp(40px, 6vw, 80px)' }}
+                        >
+                            <div style={{
+                                display: 'inline-block', padding: '6px 20px', borderRadius: 20,
+                                background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)',
+                                color: '#38bdf8', fontSize: '0.7rem', fontWeight: 700,
+                                letterSpacing: 3, textTransform: 'uppercase', marginBottom: 24,
+                            }}>THE ARCHITECTS</div>
+                            <h2 style={{
+                                fontSize: 'clamp(1.8rem, 4vw, 3rem)', fontWeight: 900,
+                                color: '#f8fafc', lineHeight: 1.2,
+                            }}>Meet the <span style={{ background: 'linear-gradient(135deg, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Engineers</span></h2>
+                            <p style={{ color: '#64748b', maxWidth: 500, margin: '16px auto 0', fontSize: '1rem', lineHeight: 1.7 }}>
+                                The minds behind Nexus Guardian's AI vision and precision targeting ecosystem.
+                            </p>
+                        </motion.div>
+
+                        <div style={{
+                            display: 'flex', justifyContent: 'center', gap: 'clamp(20px, 4vw, 60px)',
+                            flexWrap: 'wrap',
+                        }}>
+                            {(data?.founders || [
+                                { name: 'Omar', role: 'Co-Founder & Lead Engineer', bio: 'Full-stack systems engineer specializing in real-time AI inference and hardware integration.', image: '/assets/images/team/founder-1.png' },
+                                { name: 'Partner', role: 'Co-Founder & System Architect', bio: 'Computer vision specialist focused on stereo calibration and precision targeting algorithms.', image: '/assets/images/team/founder-2.png' }
+                            ]).map((founder, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 50 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true, amount: 0.2 }}
+                                    transition={{ duration: 0.6, delay: idx * 0.2 }}
+                                    style={{
+                                        width: 'clamp(280px, 40vw, 380px)',
+                                        position: 'relative', overflow: 'hidden',
+                                        borderRadius: 24, cursor: 'default',
+                                        background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.9) 100%)',
+                                        border: '1px solid rgba(255,255,255,0.06)',
+                                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        boxShadow: '0 20px 60px -15px rgba(0,0,0,0.5)',
+                                    }}
+                                    whileHover={{ y: -8, boxShadow: '0 30px 80px -15px rgba(56,189,248,0.2)' }}
+                                >
+                                    {/* Card glow top */}
+                                    <div style={{
+                                        position: 'absolute', top: -50, left: '50%', transform: 'translateX(-50%)',
+                                        width: 200, height: 200, borderRadius: '50%',
+                                        background: idx === 0
+                                            ? 'radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 70%)'
+                                            : 'radial-gradient(circle, rgba(129,140,248,0.15) 0%, transparent 70%)',
+                                        filter: 'blur(30px)', pointerEvents: 'none',
+                                    }} />
+
+                                    {/* Image container */}
+                                    <div style={{
+                                        height: 'clamp(260px, 35vw, 380px)', overflow: 'hidden',
+                                        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                                        position: 'relative',
+                                        background: 'linear-gradient(180deg, rgba(56,189,248,0.05) 0%, transparent 60%)',
+                                    }}>
+                                        <img
+                                            src={founder.image}
+                                            alt={founder.name}
+                                            style={{
+                                                height: '100%', width: 'auto', objectFit: 'contain',
+                                                filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.4))',
+                                                transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            }}
+                                            onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
+                                            onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+                                        />
+                                    </div>
+
+                                    {/* Info panel */}
+                                    <div style={{ padding: 'clamp(20px, 3vw, 32px)', textAlign: 'center' }}>
+                                        <h3 style={{
+                                            fontSize: 'clamp(1.2rem, 2.5vw, 1.6rem)', fontWeight: 900,
+                                            color: '#f8fafc', marginBottom: 6, letterSpacing: 1,
+                                        }}>{founder.name}</h3>
+                                        <div style={{
+                                            fontSize: '0.7rem', fontWeight: 700,
+                                            color: idx === 0 ? '#38bdf8' : '#818cf8',
+                                            letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14,
+                                        }}>{founder.role}</div>
+                                        <div style={{ width: 40, height: 2, background: 'rgba(56,189,248,0.2)', margin: '0 auto 14px', borderRadius: 4 }} />
+                                        <p style={{
+                                            fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.7, margin: 0,
+                                        }}>{founder.bio}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
                 </section>
 

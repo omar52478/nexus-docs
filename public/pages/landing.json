@@ -1,7 +1,29 @@
 {
   "id": "landing",
-  "title": "Nexus Guardian | Advanced Edge AI Vision Ecosystem",
-  "category": "Configuration",
+  "title": "NEXUS Vision | Edge AI Vision & Autonomous Targeting Platform",
+  "category": "Overview",
+  "description": "NEXUS Vision is an advanced real-time edge AI system for intelligent tracking, targeting, and hardware control. It combines computer vision, embedded systems, and high-performance inference to deliver precise, low-latency automation in dynamic environments.",
+  "founders": [
+    {
+      "name": "Omar Kareem",
+      "role": "Co-Founder & Hardware Systems Lead",
+      "bio": "Computer Vision and Frontend Engineer specializing in real-time AI systems. Led the design and integration of the full hardware architecture, connecting sensors, cameras, and embedded devices into a unified intelligent system.",
+      "image": "/assets/images/team/founder-2.png"
+    },
+    {
+      "name": "Ahmed Metwally",
+      "role": "Co-Founder & Software Systems Lead",
+      "bio": "Software Engineer specializing in AI pipelines and system architecture. Designed and developed the core engine, including real-time inference, tracking logic, and hardware control infrastructure.",
+      "image": "/assets/images/team/founder-1.png"
+    }
+  ],
+  "highlights": [
+    "Real-time AI-powered person tracking",
+    "Stereo vision depth estimation",
+    "Hardware-integrated targeting system",
+    "Low-latency edge processing",
+    "Modular and scalable architecture"
+  ],
   "navbar": [
     {
       "label": "Home",
@@ -14,6 +36,10 @@
     {
       "label": "Architecture",
       "href": "#process"
+    },
+    {
+      "label": "Team",
+      "href": "#team"
     },
     {
       "label": "Documentation",

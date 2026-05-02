@@ -7,7 +7,7 @@
   overflow-y: auto;
   background-color: var(--bg-primary);
   border-right: 1px solid var(--border-strong);
-  padding: 2rem 1.5rem;
+  padding: 90px 1.5rem 2rem;
   z-index: 50;
   transition: transform 0.3s ease;
 }
@@ -241,7 +241,7 @@
   }
   
   .sidebar-content {
-    margin-top: 50px;
+    margin-top: 40px;
   }
 }
 
